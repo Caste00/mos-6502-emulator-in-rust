@@ -13,7 +13,7 @@ fn main() {
     mem.data[0xFFFD] = 0x32;
     mem.data[0x0032] = 0xA5;
     mem.data[0x0033] = 0x99;
-    mem.data[0x99A6] = 0x46;
+    mem.data[0x99A6] = 0x90;
 
     cpu.execute(6, &mut mem);
 

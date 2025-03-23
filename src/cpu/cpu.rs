@@ -26,6 +26,7 @@ impl Cpu {
     pub const LDA_ABSOLUTE_X: u8 = 0xBD;
     pub const LDA_ABSOLUTE_Y: u8 = 0xB9;
     pub const LDA_INDIRECT_X: u8 = 0xA1;
+    pub const LDA_INDIRECT_Y: u8 = 0xB1;
     pub const JSR_ABSOLUTE: u8 = 0x20;
     pub const JMP_ABSOLUTE: u8 = 0x4C;
 
@@ -151,7 +152,19 @@ impl Cpu {
                     table_address = table_address.wrapping_add(self.x);
                     let indirect_address = self.read_word(memory, table_address as u16);
                     self.a = memory.data[indirect_address as usize];
+                    self.lda_set_status();
                     cycle -= 6;
+                },
+                Self::LDA_INDIRECT_Y => {
+                    let zero_page_address = self.fetch_byte(memory);
+                    let indirect_address = self.read_word(memory, zero_page_address as u16);
+                    let address = indirect_address.wrapping_add(self.y as u16);
+                    if (address >> 8) != (indirect_address >> 8) {
+                        cycle -= 1;
+                    }
+                    println!("{}", address);
+                    self.a = memory.data[address as usize];
+                    cycle -= 5;
                 },
                 Self::JSR_ABSOLUTE => {
                     let subroutine_address = self.fetch_word(memory);

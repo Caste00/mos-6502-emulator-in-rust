@@ -1,23 +1,21 @@
 use mos_6502_emulator::{Cpu, Memory};
 
 fn main() {
+    
+    /* Debug */
     let mut mem = Memory::new();
     let mut cpu = Cpu::new();
     
-    /* Debug */
     cpu.reset();
 
-    cpu.x = 0x12;
-    //cpu.x = 0xFF;
+    cpu.y = 0xFF;
+    mem.data[0xFFFC] = Cpu::LDA_INDIRECT_Y;
+    mem.data[0xFFFD] = 0x32;
+    mem.data[0x0032] = 0xA5;
+    mem.data[0x0033] = 0x99;
+    mem.data[0x99A6] = 0x45;
 
-    mem.data[0xFFFC] = Cpu::LDA_ABSOLUTE_X;
-    mem.data[0xFFFD] = 0x33;
-    mem.data[0xFFFE] = 0x44;
-    mem.data[0x4433] = 23;
-    mem.data[0x4534] = 32;
-
-    cpu.execute(5, &mut mem);
+    cpu.execute(6, &mut mem);
 
     println!("{:?}", cpu);
-
 }

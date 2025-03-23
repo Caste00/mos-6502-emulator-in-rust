@@ -22,7 +22,12 @@ impl Cpu {
     pub const LDA_IMMEDIATE: u8 = 0x9A;
     pub const LDA_ZERO_PAGE: u8 = 0xA5;
     pub const LDA_ZERO_PAGE_X: u8 = 0xB5;
+    pub const LDA_ABSOLUTE: u8 = 0xAD;
+    pub const LDA_ABSOLUTE_X: u8 = 0xBD;
+    pub const LDA_ABSOLUTE_Y: u8 = 0xB9;
+    pub const LDA_INDIRECT_X: u8 = 0xA1;
     pub const JSR_ABSOLUTE: u8 = 0x20;
+    pub const JMP_ABSOLUTE: u8 = 0x4C;
 
     pub fn new() -> Self {
         Self {
@@ -68,6 +73,12 @@ impl Cpu {
         data
     }
 
+    pub fn read_word(&mut self, memory: &Memory, address:u16) -> u16 {
+        let first_byte = memory.data[address as usize];
+        let second_byte = memory.data[(address + 1) as usize];
+        (second_byte as u16) << 8 | first_byte as u16
+    }
+
     pub fn push_on_stack(&mut self, memory: &mut Memory, value: u8) {
         memory.data[0x0100 + self.sp as usize] = value;
         self.sp = self.sp.wrapping_sub(1);
@@ -109,13 +120,53 @@ impl Cpu {
                     self.lda_set_status();
                     cycle -= 4;
                 },
+                Self::LDA_ABSOLUTE => {
+                    let absolute_address = self.fetch_word(memory);
+                    self.a = memory.data[absolute_address as usize];
+                    self.lda_set_status();
+                    cycle -= 4;
+                },
+                Self::LDA_ABSOLUTE_X => {
+                    let absolute_address = self.fetch_word(memory);
+                    let address = absolute_address.wrapping_add(self.x as u16);
+                    if (absolute_address >> 8) != (address >> 8) {
+                        cycle -= 1;
+                    }
+                    self.a = memory.data[address as usize];
+                    self.lda_set_status();
+                    cycle -= 4;
+                },
+                Self::LDA_ABSOLUTE_Y => {
+                    let absolute_address = self.fetch_word(memory);
+                    let address = absolute_address.wrapping_add(self.y as u16);
+                    if (absolute_address >> 8) != (address >> 8) {
+                        cycle -= 1;
+                    }
+                    self.a = memory.data[address as usize];
+                    self.lda_set_status();
+                    cycle -= 4;
+                },
+                Self::LDA_INDIRECT_X => {
+                    let mut table_address = self.fetch_byte(memory);
+                    table_address = table_address.wrapping_add(self.x);
+                    let indirect_address = self.read_word(memory, table_address as u16);
+                    self.a = memory.data[indirect_address as usize];
+                    cycle -= 6;
+                },
                 Self::JSR_ABSOLUTE => {
                     let subroutine_address = self.fetch_word(memory);
                     self.push_on_stack(memory, ((self.pc - 1) >> 8) as u8); // byte alto
                     self.push_on_stack(memory, (self.pc - 1) as u8);        // byte basso
                     self.pc = subroutine_address as usize;
                     cycle -= 6;
-                }
+                },
+                Self::JMP_ABSOLUTE => {
+                    let jmp_address = self.fetch_word(memory);
+                    let fist_byte = memory.data[jmp_address as usize];
+                    let second_byte = memory.data[(jmp_address + 1) as usize];
+                    self.pc = ((second_byte as usize) << 8) | fist_byte as usize;
+                    cycle -= 3;
+                },
                 _ => {
                     println!("Errore, istruzione {} non riconosciuta", instruction);
                     break;

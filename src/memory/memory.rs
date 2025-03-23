@@ -11,4 +11,8 @@ impl Memory {
             data: [0; RAM_SIZE],
         }
     }
+
+    pub fn reset(&mut self) {
+        self.data.fill(0);
+    }
 }

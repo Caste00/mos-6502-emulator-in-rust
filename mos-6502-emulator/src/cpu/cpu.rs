@@ -28,6 +28,7 @@ impl Cpu {
     pub const LDA_INDIRECT_X: u8 = 0xA1;
     pub const LDA_INDIRECT_Y: u8 = 0xB1;
     pub const JSR_ABSOLUTE: u8 = 0x20;
+    pub const RST_IMPLIED: u8 = 0x60;
     pub const JMP_ABSOLUTE: u8 = 0x4C;
 
     pub fn new() -> Self {
@@ -169,8 +170,17 @@ impl Cpu {
                 Self::JSR_ABSOLUTE => {
                     let subroutine_address = self.fetch_word(memory);
                     self.push_on_stack(memory, ((self.pc - 1) >> 8) as u8); // byte alto
-                    self.push_on_stack(memory, (self.pc - 1) as u8);        // byte basso
+                    self.push_on_stack(memory, ((self.pc - 1) & 0xFF) as u8);        // byte basso
                     self.pc = subroutine_address as usize;
+                    cycle -= 6;
+                },
+                Self::RST_IMPLIED => {
+                    self.sp += 1;
+                    let first_byte = memory.data[0x0100 | self.sp as usize];
+                    self.sp += 1;
+                    let second_byte = memory.data[0x0100 | self.sp as usize];
+                    self.pc = ((second_byte as usize) << 8) | (first_byte as usize);
+                    self.pc += 1;
                     cycle -= 6;
                 },
                 Self::JMP_ABSOLUTE => {

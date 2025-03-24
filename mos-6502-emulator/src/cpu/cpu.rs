@@ -30,6 +30,7 @@ impl Cpu {
     pub const JSR_ABSOLUTE: u8 = 0x20;
     pub const RST_IMPLIED: u8 = 0x60;
     pub const JMP_ABSOLUTE: u8 = 0x4C;
+    pub const JMP_INDIRECT: u8 = 0x6c;
 
     pub fn new() -> Self {
         Self {
@@ -184,11 +185,15 @@ impl Cpu {
                     cycle -= 6;
                 },
                 Self::JMP_ABSOLUTE => {
+                    self.pc = self.fetch_word(memory) as usize;
+                    cycle -= 3;
+                },
+                Self::JMP_INDIRECT => {
                     let jmp_address = self.fetch_word(memory);
                     let fist_byte = memory.data[jmp_address as usize];
                     let second_byte = memory.data[(jmp_address + 1) as usize];
                     self.pc = ((second_byte as usize) << 8) | fist_byte as usize;
-                    cycle -= 3;
+                    cycle -= 5;
                 },
                 _ => {
                     println!("Errore, istruzione {} non riconosciuta", instruction);

@@ -8,14 +8,11 @@ fn main() {
     
     cpu.reset();
 
-    cpu.y = 0xFF;
-    mem.data[0xFFFC] = Cpu::LDA_INDIRECT_Y;
-    mem.data[0xFFFD] = 0x32;
-    mem.data[0x0032] = 0xA5;
-    mem.data[0x0033] = 0x99;
-    mem.data[0x99A6] = 0x90;
-
-    cpu.execute(6, &mut mem);
+    mem.data[0xFFFC] = Cpu::JSR_ABSOLUTE;
+    mem.data[0xFFFD] = 0x33;
+    mem.data[0xFFFE] = 0x44;
+    mem.data[0x4433] = Cpu::RST_IMPLIED;
+    cpu.execute(12, &mut mem);
 
     println!("{:?}", cpu);
 }

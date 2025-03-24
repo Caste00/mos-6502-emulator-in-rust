@@ -38,4 +38,17 @@ mod test {
 
         assert_eq!(cpu.pc, 0x45);
     }
+
+    #[test]
+    fn rst_implied() {
+        let (mut cpu, mut mem) = setup();
+
+        mem.data[0xFFFC] = Cpu::JSR_ABSOLUTE;
+        mem.data[0xFFFD] = 0x33;
+        mem.data[0xFFFE] = 0x44;
+        mem.data[0x4433] = Cpu::RST_IMPLIED;
+        cpu.execute(12, &mut mem);
+
+        assert_eq!(cpu.pc, 0xFFFF);
+    }
 }

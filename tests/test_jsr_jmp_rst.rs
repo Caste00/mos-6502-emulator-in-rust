@@ -31,10 +31,22 @@ mod test {
         let (mut cpu, mut mem) = setup();
 
         mem.data[0xFFFC] = Cpu::JMP_ABSOLUTE;
+        mem.data[0xFFFD] = 0x33;
+        mem.data[0xFFFE] = 0x44;
+        cpu.execute(3, &mut mem);
+
+        assert_eq!(cpu.pc, 0x4433);
+    }
+
+    #[test]
+    fn jmp_indirect() {
+        let (mut cpu, mut mem) = setup();
+
+        mem.data[0xFFFC] = Cpu::JMP_INDIRECT;
         mem.data[0xFFFD] = 0x44;
         mem.data[0xFFFE] = 0x33;
         mem.data[0x3344] = 0x45;
-        cpu.execute(3, &mut mem);
+        cpu.execute(5, &mut mem);
 
         assert_eq!(cpu.pc, 0x45);
     }

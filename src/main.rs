@@ -8,11 +8,14 @@ fn main() {
     
     cpu.reset();
 
-    mem.data[0xFFFC] = Cpu::JSR_ABSOLUTE;
-    mem.data[0xFFFD] = 0x33;
-    mem.data[0xFFFE] = 0x44;
-    mem.data[0x4433] = Cpu::RST_IMPLIED;
-    cpu.execute(12, &mut mem);
+    cpu.a = 0b1010_1111;
+    cpu.x = 0x1F;
+    mem.data[0xFFFC] = Cpu::AND_INDIRECT_X;
+    mem.data[0xFFFD] = 0x44;
+    mem.data[0x0063] = 0x30;
+    mem.data[0x0064] = 0x40;
+    mem.data[0x4030] = 0b1111_1010;
+    cpu.execute(5, &mut mem);
 
     println!("{:?}", cpu);
 }

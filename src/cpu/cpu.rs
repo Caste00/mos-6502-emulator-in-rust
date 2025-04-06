@@ -60,6 +60,11 @@ impl Cpu {
     pub const TYA_IMPLIED: u8 = 0x98;
     pub const TXS_IMPLICIT: u8 = 0x9A;   
     pub const TSX_IMPLIED: u8 = 0xBA;
+    pub const ASL_ACCUMULATOR: u8 = 0x0A;
+    pub const ASL_ZERO_PAGE: u8 = 0x06;
+    pub const ASL_ZERO_PAGE_X: u8 = 0x16;
+    pub const ASL_ABSOLUTE: u8 = 0x0E;
+    pub const ASL_ABSOLUTE_X: u8 = 0x1E;
     pub const AND_IMMEDIATE: u8 = 0x29;
     pub const AND_ZERO_PAGE: u8 = 0x25;
     pub const AND_ZERO_PAGE_X: u8 = 0x35;
@@ -68,11 +73,14 @@ impl Cpu {
     pub const AND_ABSOLUTE_Y: u8 = 0x39;
     pub const AND_INDIRECT_X: u8 = 0x21;
     pub const AND_INDIRECT_Y: u8 = 0x31;
-    pub const ASL_ACCUMULATOR: u8 = 0x0A;
-    pub const ASL_ZERO_PAGE: u8 = 0x06;
-    pub const ASL_ZERO_PAGE_X: u8 = 0x16;
-    pub const ASL_ABSOLUTE: u8 = 0x0E;
-    pub const ASL_ABSOLUTE_X: u8 = 0x1E;
+    pub const EOR_IMMEDIATE: u8 = 0x49;
+    pub const EOR_ZERO_PAGE: u8 = 0x45;
+    pub const EOR_ZERO_PAGE_X: u8 = 0x55;
+    pub const EOR_ABSOLUTE: u8 = 0x4D;
+    pub const EOR_ABSOLUTE_X: u8 = 0x5D;
+    pub const EOR_ABSOLUTE_Y: u8 = 0x59;
+    pub const EOR_INDIRECT_X: u8 = 0x41;
+    pub const EOR_INDIRECT_Y: u8 = 0x51;
 
     pub fn new() -> Self {
         Self {
@@ -155,7 +163,7 @@ impl Cpu {
         self.n = ((result & 0b1000_0000) > 0) as u8;
     }
 
-    pub fn and_set_status(&mut self) {
+    pub fn logic_operation_set_status(&mut self) {
         self.z = (self.a == 0) as u8;
         self.n = ((self.a & 0b1000_0000) > 0) as u8;
     }
@@ -191,17 +199,18 @@ impl Cpu {
                     cycle -= 4;
                 },
                 Self::LDA_ABSOLUTE_X => {
-                    let absolute_address = self.fetch_word(memory).wrapping_add(self.x as u16) as usize;
-                    if (absolute_address >> 8) != (absolute_address >> 8) {
+                    let mut absolute_address = self.fetch_word(memory) as usize;
+                    if (absolute_address >> 8) != (absolute_address.wrapping_add(self.x as usize) >> 8) {
                         cycle -= 1;
                     }
+                    absolute_address = absolute_address.wrapping_add(self.x as usize);
                     self.a = memory.data[absolute_address];
                     self.z_n_register_a_set_status();
                     cycle -= 4;
                 },
                 Self::LDA_ABSOLUTE_Y => {
                     let mut absolute_address = self.fetch_word(memory) as usize;
-                    if (absolute_address >> 8) != ((absolute_address + self.y as usize) >> 8) {
+                    if (absolute_address >> 8) != (absolute_address.wrapping_add(self.y as usize) >> 8) {
                         cycle -= 1;
                     }
                     absolute_address = absolute_address.wrapping_add(self.y as usize);
@@ -219,7 +228,7 @@ impl Cpu {
                 Self::LDA_INDIRECT_Y => {
                     let zero_page_address = self.fetch_byte(memory) as u16;
                     let mut indirect_address = self.read_word(memory, zero_page_address) as usize;
-                    if (indirect_address >> 8) != ((indirect_address + self.y as usize) >> 8) {
+                    if (indirect_address >> 8) != (indirect_address.wrapping_add(self.y as usize) >> 8) {
                         cycle -= 1;
                     }
                     indirect_address = indirect_address.wrapping_add(self.y as usize);
@@ -275,7 +284,7 @@ impl Cpu {
                 },
                 Self::LDX_ABSOLUTE_Y => {
                     let mut absolute_address = self.fetch_word(memory) as usize;
-                    if (absolute_address >> 8) != ((absolute_address + self.y as usize) >> 8) {
+                    if (absolute_address >> 8) != (absolute_address.wrapping_add(self.y as usize) >> 8) {
                         cycle -= 1;
                     }
                     absolute_address = absolute_address.wrapping_add(self.y as usize);
@@ -308,7 +317,7 @@ impl Cpu {
                 },
                 Self::LDY_ABSOLUTE_X => {
                     let mut absolute_address = self.fetch_word(memory) as usize;
-                    if (absolute_address >> 8) != ((absolute_address + self.x as usize) >> 8) {
+                    if (absolute_address >> 8) != (absolute_address.wrapping_add(self.x as usize) >> 8) {
                         cycle -= 1;
                     }
                     absolute_address = absolute_address.wrapping_add(self.x as usize);
@@ -449,70 +458,121 @@ impl Cpu {
                 Self::AND_IMMEDIATE => {
                     let data = self.fetch_byte(memory);
                     self.a &= data;
-                    self.and_set_status();
+                    self.logic_operation_set_status();
                     cycle -= 2;
                 },
                 Self::AND_ZERO_PAGE => {
                     let address = self.fetch_byte(memory) as usize;
                     self.a &= memory.data[address];
-                    self.and_set_status();
+                    self.logic_operation_set_status();
                     cycle -= 3;
                 },
                 Self::AND_ZERO_PAGE_X => {
                     let mut address = self.fetch_byte(memory);
                     address = address.wrapping_add(self.x);
                     self.a &= memory.data[address as usize];
-                    self.and_set_status();
+                    self.logic_operation_set_status();
                     cycle -= 4;
                 },
                 Self::AND_ABSOLUTE => {
                     let address = self.fetch_word(memory) as usize;
                     self.a &= memory.data[address];
-                    self.and_set_status();
+                    self.logic_operation_set_status();
                     cycle -= 4;
                 },
                 Self::AND_ABSOLUTE_X => {
                     let mut address = self.fetch_word(memory);
                     address = address.wrapping_add(self.x as u16);
                     self.a &= memory.data[address as usize];
-                    self.and_set_status();
+                    self.logic_operation_set_status();
                     cycle -= 4;
                 },
                 Self::AND_ABSOLUTE_Y => {
                     let mut address = self.fetch_word(memory);
                     address = address.wrapping_add(self.y as u16);
                     self.a &= memory.data[address as usize];
-                    self.and_set_status();
+                    self.logic_operation_set_status();
                     cycle -= 4;
                 },
                 Self::AND_INDIRECT_X => {
                     let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x) as u16;
                     let indirect_address = self.read_word(memory, zero_page_address) as usize;
                     self.a &= memory.data[indirect_address];
-                    self.and_set_status();
+                    self.logic_operation_set_status();
                     cycle -= 6;
                 },
                 Self::AND_INDIRECT_Y => {
                     let zero_page_address = self.fetch_byte(memory) as u16;
                     let mut indirect_address = self.read_word(memory, zero_page_address) as usize;
-                    if (indirect_address >> 8) != ((indirect_address + self.y as usize) >> 8) {
+                    if (indirect_address >> 8) != (indirect_address.wrapping_add(self.y as usize) >> 8) {
                         cycle -= 1;
                     }
                     indirect_address = indirect_address.wrapping_add(self.y as usize);
                     self.a &= memory.data[indirect_address];
                     cycle -= 5;
                 },
-                /*  Self::LDA_INDIRECT_Y => {
-                        let zero_page_address = self.fetch_byte(memory);
-                        let indirect_address = self.read_word(memory, zero_page_address as u16).wrapping_add(self.y as u16) as usize;
-                        if (indirect_address >> 8) != (indirect_address >> 8) {
-                            cycle -= 1;
-                        }
-                        println!("{}", indirect_address);
-                        self.a = memory.data[indirect_address];
-                        cycle -= 5;
-                    },*/
-
+                Self::EOR_IMMEDIATE => {
+                    let data = self.fetch_byte(memory);
+                    self.a |= data;
+                    self.logic_operation_set_status();
+                    cycle -= 2;
+                },
+                Self::EOR_ZERO_PAGE => {
+                    let address = self.fetch_byte(memory) as usize;
+                    self.a |= memory.data[address];
+                    self.logic_operation_set_status();
+                    cycle -= 3;
+                },
+                Self::EOR_ZERO_PAGE_X => {
+                    let address = self.fetch_byte(memory).wrapping_add(self.x) as usize;
+                    self.a |= memory.data[address];
+                    self.logic_operation_set_status();
+                    cycle -= 4;
+                },
+                Self::EOR_ABSOLUTE => {
+                    let address = self.fetch_word(memory) as usize;
+                    self.a |= memory.data[address];
+                    self.logic_operation_set_status();
+                    cycle -= 4;
+                },
+                Self::EOR_ABSOLUTE_X => {
+                    let mut address = self.fetch_word(memory) as usize;
+                    if (address >> 8) != ((address.wrapping_add(self.x as usize)) >> 8) {
+                        cycle -= 1;
+                    }
+                    address = address.wrapping_add(self.x as usize);
+                    self.a |= memory.data[address];
+                    self.logic_operation_set_status();
+                    cycle -= 4;
+                },
+                Self::EOR_ABSOLUTE_Y => {
+                    let mut address = self.fetch_word(memory) as usize;
+                    if (address >> 8) != ((address.wrapping_add(self.y as usize)) >> 8) {
+                        cycle -= 1;
+                    }
+                    address = address.wrapping_add(self.y as usize);
+                    self.a |= memory.data[address];
+                    self.logic_operation_set_status();
+                    cycle -= 4;
+                },
+                Self::EOR_INDIRECT_X => {
+                    let zero_page_address = self.fetch_word(memory).wrapping_add(self.x as u16);
+                    let indirect_address = self.read_word(memory, zero_page_address) as usize;
+                    self.a |= memory.data[indirect_address];
+                    self.logic_operation_set_status();
+                    cycle -= 6;
+                },
+                Self::EOR_INDIRECT_Y => {
+                    let zero_page_address = self.fetch_word(memory);
+                    let mut indirect_address = self.read_word(memory, zero_page_address) as usize;
+                    if (indirect_address >> 8) != (indirect_address.wrapping_add(self.y as usize) >> 8) {
+                        cycle -= 1;
+                    }
+                    indirect_address = indirect_address.wrapping_add(self.y as usize);
+                    self.a |= memory.data[indirect_address];
+                    self.logic_operation_set_status();
+                    cycle -= 5;
+                },
                 _ => {
                     println!("Errore, istruzione {} non riconosciuta", instruction);
                     break;

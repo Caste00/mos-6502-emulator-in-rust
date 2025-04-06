@@ -60,11 +60,6 @@ impl Cpu {
     pub const TYA_IMPLIED: u8 = 0x98;
     pub const TXS_IMPLICIT: u8 = 0x9A;   
     pub const TSX_IMPLIED: u8 = 0xBA;
-    pub const ASL_ACCUMULATOR: u8 = 0x0A;
-    pub const ASL_ZERO_PAGE: u8 = 0x06;
-    pub const ASL_ZERO_PAGE_X: u8 = 0x16;
-    pub const ASL_ABSOLUTE: u8 = 0x0E;
-    pub const ASL_ABSOLUTE_X: u8 = 0x1E;
     pub const AND_IMMEDIATE: u8 = 0x29;
     pub const AND_ZERO_PAGE: u8 = 0x25;
     pub const AND_ZERO_PAGE_X: u8 = 0x35;
@@ -73,6 +68,11 @@ impl Cpu {
     pub const AND_ABSOLUTE_Y: u8 = 0x39;
     pub const AND_INDIRECT_X: u8 = 0x21;
     pub const AND_INDIRECT_Y: u8 = 0x31;
+    pub const ASL_ACCUMULATOR: u8 = 0x0A;
+    pub const ASL_ZERO_PAGE: u8 = 0x06;
+    pub const ASL_ZERO_PAGE_X: u8 = 0x16;
+    pub const ASL_ABSOLUTE: u8 = 0x0E;
+    pub const ASL_ABSOLUTE_X: u8 = 0x1E;
 
     pub fn new() -> Self {
         Self {

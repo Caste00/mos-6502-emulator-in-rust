@@ -141,6 +141,156 @@ mod test {
     }
 
     #[test]
+    fn test_ora_immediate() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0000_1111;
+        mem.data[0xFFFC] = Cpu::ORA_IMMEDIATE;
+        mem.data[0xFFFD] = 0b1100_1100;
+        cpu.execute(2, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100_1111);
+    }
+
+    #[test]
+    fn test_ora_zero_page() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0000_1111;
+        mem.data[0xFFFC] = Cpu::ORA_ZERO_PAGE;
+        mem.data[0xFFFD] = 0x45;
+        mem.data[0x0045] = 0b1100_1100;
+        cpu.execute(3, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100_1111);
+    }
+
+    #[test]
+    fn test_ora_zero_page_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0000_1111;
+        cpu.x = 0x1F;
+        mem.data[0xFFFC] = Cpu::ORA_ZERO_PAGE_X;
+        mem.data[0xFFFD] = 0x45;
+        mem.data[0x0064] = 0b1100_1100;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100_1111);
+    }
+
+    #[test]
+    fn test_ora_absolute() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0000_1111;
+        mem.data[0xFFFC] = Cpu::ORA_ABSOLUTE;
+        mem.data[0xFFFD] = 0x40;
+        mem.data[0xFFFE] = 0x30;
+        mem.data[0x3040] = 0b1100_1100;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100_1111);
+    }
+
+    #[test]
+    fn test_ora_absolute_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0000_1111;
+        cpu.x = 0x1F;
+        mem.data[0xFFFC] = Cpu::ORA_ABSOLUTE_X;
+        mem.data[0xFFFD] = 0x40;
+        mem.data[0xFFFE] = 0x30;
+        mem.data[0x305F] = 0b1100_1100;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100_1111);
+
+        cpu.reset();
+        cpu.a = 0b0000_1111;
+        cpu.x = 0xFF;
+        mem.data[0xFFFC] = Cpu::ORA_ABSOLUTE_X;
+        mem.data[0xFFFD] = 0x40;
+        mem.data[0xFFFE] = 0x30;
+        mem.data[0x313F] = 0b1100_1100;
+        cpu.execute(5, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100_1111);
+    }
+
+    #[test]
+    fn test_ora_absolute_y() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0000_1111;
+        cpu.y = 0x1F;
+        mem.data[0xFFFC] = Cpu::ORA_ABSOLUTE_Y;
+        mem.data[0xFFFD] = 0x40;
+        mem.data[0xFFFE] = 0x30;
+        mem.data[0x305F] = 0b1100_1100;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100_1111);
+
+        cpu.reset();
+        cpu.a = 0b0000_1111;
+        cpu.y = 0xFF;
+        mem.data[0xFFFC] = Cpu::ORA_ABSOLUTE_Y;
+        mem.data[0xFFFD] = 0x40;
+        mem.data[0xFFFE] = 0x30;
+        mem.data[0x313F] = 0b1100_1100;
+        cpu.execute(5, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100_1111);
+    }
+
+    #[test]
+    fn test_ora_indirect_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0000_1111;
+        cpu.x = 0x1F;
+        mem.data[0xFFFC] = Cpu::ORA_INDIRECT_X;
+        mem.data[0xFFFD] = 0x44;
+        mem.data[0x0063] = 0x30;
+        mem.data[0x0064] = 0x40;
+        mem.data[0x4030] = 0b1100_1100;
+        cpu.execute(6, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100_1111);
+    }
+
+    #[test]
+    fn test_ora_indirect_y() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0000_1111;
+        cpu.y = 0x1F;
+        mem.data[0xFFFC] = Cpu::ORA_INDIRECT_Y;
+        mem.data[0xFFFD] = 0x44;
+        mem.data[0x0044] = 0x30;
+        mem.data[0x0045] = 0x40;
+        mem.data[0x404F] = 0b1100_1111;
+        cpu.execute(5, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100_1111);
+
+        cpu.reset();
+
+        cpu.a = 0b0000_1111;
+        cpu.y = 0xFF;
+        mem.data[0xFFFC] = Cpu::ORA_INDIRECT_Y;
+        mem.data[0xFFFD] = 0x44;
+        mem.data[0x0044] = 0x30;
+        mem.data[0x0045] = 0x40;
+        mem.data[0x412F] = 0b1100_1100;
+        cpu.execute(6, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100_1111);
+    }
+
+    #[test]
     fn test_eor_immediate() {
         let (mut cpu, mut mem) = setup();
 
@@ -149,7 +299,7 @@ mod test {
         mem.data[0xFFFD] = 0b1100_1100;
         cpu.execute(2, &mut mem);
 
-        assert_eq!(cpu.a, 0b1100_1111);
+        assert_eq!(cpu.a, 0b1100_0011);
     }
 
     #[test]
@@ -157,7 +307,7 @@ mod test {
         let (mut cpu, mut mem) = setup();
 
         cpu.a = 0b0000_1111;
-        mem.data[0xFFFC] = Cpu::EOR_ZERO_PAGE;
+        mem.data[0xFFFC] = Cpu::ORA_ZERO_PAGE;
         mem.data[0xFFFD] = 0x45;
         mem.data[0x0045] = 0b1100_1100;
         cpu.execute(3, &mut mem);
@@ -176,7 +326,7 @@ mod test {
         mem.data[0x0064] = 0b1100_1100;
         cpu.execute(4, &mut mem);
 
-        assert_eq!(cpu.a, 0b1100_1111);
+        assert_eq!(cpu.a, 0b1100_0011);
     }
 
     #[test]
@@ -190,7 +340,7 @@ mod test {
         mem.data[0x3040] = 0b1100_1100;
         cpu.execute(4, &mut mem);
 
-        assert_eq!(cpu.a, 0b1100_1111);
+        assert_eq!(cpu.a, 0b1100_0011);
     }
 
     #[test]
@@ -205,7 +355,7 @@ mod test {
         mem.data[0x305F] = 0b1100_1100;
         cpu.execute(4, &mut mem);
 
-        assert_eq!(cpu.a, 0b1100_1111);
+        assert_eq!(cpu.a, 0b1100_0011);
 
         cpu.reset();
         cpu.a = 0b0000_1111;
@@ -216,7 +366,7 @@ mod test {
         mem.data[0x313F] = 0b1100_1100;
         cpu.execute(5, &mut mem);
 
-        assert_eq!(cpu.a, 0b1100_1111);
+        assert_eq!(cpu.a, 0b1100_0011);
     }
 
     #[test]
@@ -231,7 +381,7 @@ mod test {
         mem.data[0x305F] = 0b1100_1100;
         cpu.execute(4, &mut mem);
 
-        assert_eq!(cpu.a, 0b1100_1111);
+        assert_eq!(cpu.a, 0b1100_0011);
 
         cpu.reset();
         cpu.a = 0b0000_1111;
@@ -242,7 +392,7 @@ mod test {
         mem.data[0x313F] = 0b1100_1100;
         cpu.execute(5, &mut mem);
 
-        assert_eq!(cpu.a, 0b1100_1111);
+        assert_eq!(cpu.a, 0b1100_0011);
     }
 
     #[test]
@@ -258,7 +408,7 @@ mod test {
         mem.data[0x4030] = 0b1100_1100;
         cpu.execute(6, &mut mem);
 
-        assert_eq!(cpu.a, 0b1100_1111);
+        assert_eq!(cpu.a, 0b1100_0011);
     }
 
     #[test]
@@ -274,7 +424,7 @@ mod test {
         mem.data[0x404F] = 0b1100_1111;
         cpu.execute(5, &mut mem);
 
-        assert_eq!(cpu.a, 0b1100_1111);
+        assert_eq!(cpu.a, 0b1100_0000);
 
         cpu.reset();
 
@@ -287,6 +437,37 @@ mod test {
         mem.data[0x412F] = 0b1100_1100;
         cpu.execute(6, &mut mem);
 
-        assert_eq!(cpu.a, 0b1100_1111);
+        assert_eq!(cpu.a, 0b1100_0011);
+    }
+
+    #[test]
+    fn test_bit_zero_page() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b1010_1010;
+        mem.data[0xFFFC] = Cpu::BIT_ZERO_PAGE;
+        mem.data[0xFFFD] = 0x40;
+        mem.data[0x0040] = 0b1100_1100;
+        cpu.execute(3, &mut mem);
+
+        assert_eq!(cpu.z, 0);
+        assert_eq!(cpu.n, 1);
+        assert_eq!(cpu.v, 1);
+    }
+
+    #[test]
+    fn test_bit_absolute() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b1010_1010;
+        mem.data[0xFFFC] = Cpu::BIT_ABSOLUTE;
+        mem.data[0xFFFD] = 0x40;
+        mem.data[0xFFFE] = 0x30;
+        mem.data[0x3040] = 0b0000_0101;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.z, 1);
+        assert_eq!(cpu.n, 0);
+        assert_eq!(cpu.v, 0);
     }
 }

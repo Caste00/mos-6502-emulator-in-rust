@@ -91,6 +91,7 @@ impl Cpu {
     pub const ORA_INDIRECT_Y: u8 = 0x11;
     pub const BIT_ZERO_PAGE: u8 = 0x24;
     pub const BIT_ABSOLUTE: u8 = 0x2C;
+    pub const BBC_RELATIVE: u8 = 0x90;
 
     pub fn new() -> Self {
         Self {
@@ -662,6 +663,18 @@ impl Cpu {
                     let and_result = self.a & memory.data[address];
                     self.bit_set_status(and_result, memory.data[address]);
                     cycle -= 4;
+                },
+                Self::BBC_RELATIVE => {
+                    let offset = self.fetch_byte(memory) as i8;
+                    if self.c == 0 {
+                        let new_pc = (self.pc as isize).wrapping_add(offset as isize) as usize;
+                        if (self.pc >> 8) != (new_pc >> 8) {
+                            cycle -= 1;
+                        }
+                        self.pc = new_pc;
+                        cycle -= 1;
+                    }
+                    cycle -= 2;
                 },
                 _ => {
                     println!("Errore, istruzione {} non riconosciuta", instruction);

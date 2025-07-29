@@ -99,6 +99,13 @@ impl Cpu {
     pub const BPL_RELATIVE: u8 = 0x10;
     pub const BVS_RELATIVE: u8 = 0x70;
     pub const BVC_RELATIVE: u8 = 0x80;
+    pub const CLC_IMPLIED: u8 = 0x18;
+    pub const CLD_IMPLIED: u8 = 0xD8;
+    pub const CLI_IMPLIED: u8 = 0x58;
+    pub const CLV_IMPLIED: u8 = 0xB8;
+    pub const SEC_IMPLIED: u8 = 0x38;
+    pub const SED_IMPLIED: u8 = 0xF8;
+    pub const SEI_IMPLIED: u8 = 0x78;
 
     pub fn new() -> Self {
         Self {
@@ -765,6 +772,34 @@ impl Cpu {
                         self.pc = new_pc;
                         cycle -= 1;
                     }
+                    cycle -= 2;
+                },
+                Self::CLC_IMPLIED => {
+                    self.c = 0;
+                    cycle -= 2;
+                },
+                Self::CLD_IMPLIED => {
+                    self.d = 0;
+                    cycle -= 2;
+                },
+                Self::CLI_IMPLIED => {
+                    self.i = 0;
+                    cycle -= 2;
+                },
+                Self::CLV_IMPLIED => {
+                    self.v = 0;
+                    cycle -= 2;
+                },
+                Self::SEC_IMPLIED => {
+                    self.c = 1;
+                    cycle -= 2;
+                },
+                Self::SED_IMPLIED => {
+                    self.d = 1;
+                    cycle -= 2;
+                },
+                Self::SEI_IMPLIED => {
+                    self.i = 1;
                     cycle -= 2;
                 },
                 _ => {

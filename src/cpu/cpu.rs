@@ -92,6 +92,13 @@ impl Cpu {
     pub const BIT_ZERO_PAGE: u8 = 0x24;
     pub const BIT_ABSOLUTE: u8 = 0x2C;
     pub const BBC_RELATIVE: u8 = 0x90;
+    pub const BCS_RELATIVE: u8 = 0xB0;
+    pub const BEQ_RELATIVE: u8 = 0xF0;
+    pub const BNE_RELATIVE: u8 = 0xD0;
+    pub const BMI_RELATIVE: u8 = 0x30;
+    pub const BPL_RELATIVE: u8 = 0x10;
+    pub const BVS_RELATIVE: u8 = 0x70;
+    pub const BVC_RELATIVE: u8 = 0x80;
 
     pub fn new() -> Self {
         Self {
@@ -667,6 +674,90 @@ impl Cpu {
                 Self::BBC_RELATIVE => {
                     let offset = self.fetch_byte(memory) as i8;
                     if self.c == 0 {
+                        let new_pc = (self.pc as isize).wrapping_add(offset as isize) as usize;
+                        if (self.pc >> 8) != (new_pc >> 8) {
+                            cycle -= 1;
+                        }
+                        self.pc = new_pc;
+                        cycle -= 1;
+                    }
+                    cycle -= 2;
+                },
+                Self::BCS_RELATIVE => {
+                    let offset = self.fetch_byte(memory) as i8;
+                    if self.c == 1 {
+                        let new_pc = (self.pc as isize).wrapping_add(offset as isize) as usize;
+                        if (self.pc >> 8) != (new_pc >> 8) {
+                            cycle -= 1;
+                        }
+                        self.pc = new_pc;
+                        cycle -= 1;
+                    }
+                    cycle -= 2;
+                },
+                Self::BEQ_RELATIVE => {
+                    let offset = self.fetch_byte(memory) as i8;
+                    if self.z == 1 {
+                        let new_pc = (self.pc as isize).wrapping_add(offset as isize) as usize;
+                        if (self.pc >> 8) != (new_pc >> 8) {
+                            cycle -= 1;
+                        }
+                        self.pc = new_pc;
+                        cycle -= 1;
+                    }
+                    cycle -= 2;
+                },
+                Self::BNE_RELATIVE => {
+                    let offset = self.fetch_byte(memory) as i8;
+                    if self.z == 0 {
+                        let new_pc = (self.pc as isize).wrapping_add(offset as isize) as usize;
+                        if (self.pc >> 8) != (new_pc >> 8) {
+                            cycle -= 1;
+                        }
+                        self.pc = new_pc;
+                        cycle -= 1;
+                    }
+                    cycle -= 2;
+                },
+                Self::BMI_RELATIVE => {
+                    let offset = self.fetch_byte(memory) as i8;
+                    if self.n == 1 {
+                        let new_pc = (self.pc as isize).wrapping_add(offset as isize) as usize;
+                        if (self.pc >> 8) != (new_pc >> 8) {
+                            cycle -= 1;
+                        }
+                        self.pc = new_pc;
+                        cycle -= 1;
+                    }
+                    cycle -= 2;
+                },
+                Self::BPL_RELATIVE => {
+                    let offset = self.fetch_byte(memory) as i8;
+                    if self.n == 0 {
+                        let new_pc = (self.pc as isize).wrapping_add(offset as isize) as usize;
+                        if (self.pc >> 8) != (new_pc >> 8) {
+                            cycle -= 1;
+                        }
+                        self.pc = new_pc;
+                        cycle -= 1;
+                    }
+                    cycle -= 2;
+                },
+                Self::BVS_RELATIVE => {
+                    let offset = self.fetch_byte(memory) as i8;
+                    if self.v == 1 {
+                        let new_pc = (self.pc as isize).wrapping_add(offset as isize) as usize;
+                        if (self.pc >> 8) != (new_pc >> 8) {
+                            cycle -= 1;
+                        }
+                        self.pc = new_pc;
+                        cycle -= 1;
+                    }
+                    cycle -= 2;
+                },
+                Self::BVC_RELATIVE => {
+                    let offset = self.fetch_byte(memory) as i8;
+                    if self.v == 0 {
                         let new_pc = (self.pc as isize).wrapping_add(offset as isize) as usize;
                         if (self.pc >> 8) != (new_pc >> 8) {
                             cycle -= 1;

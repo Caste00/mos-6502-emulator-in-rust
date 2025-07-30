@@ -106,6 +106,10 @@ impl Cpu {
     pub const SEC_IMPLIED: u8 = 0x38;
     pub const SED_IMPLIED: u8 = 0xF8;
     pub const SEI_IMPLIED: u8 = 0x78;
+    pub const PHA_IMPLIED: u8 = 0x48;
+    pub const PHP_IMPLIED: u8 = 0x08;
+    pub const PLA_IMPLIED: u8 = 0x68;
+    pub const PLP_IMPLIED: u8 = 0x28;
 
     pub fn new() -> Self {
         Self {
@@ -801,6 +805,38 @@ impl Cpu {
                 Self::SEI_IMPLIED => {
                     self.i = 1;
                     cycle -= 2;
+                },
+                Self::PHA_IMPLIED => {
+                    self.push_on_stack(memory, self.a);
+                    cycle -= 3;
+                },
+                Self::PHP_IMPLIED => {
+                    let mut status = 0b0010_0000;
+                    status |= self.n << 7;
+                    status |= self.v << 6;
+                    status |= self.b << 4;
+                    status |= self.d << 3;
+                    status |= self.i << 2;
+                    status |= self.z << 1;
+                    status |= self.c;
+                    self.push_on_stack(memory, status);
+                    cycle -= 3;
+                },
+                Self::PLA_IMPLIED => {
+                    self.a = self.pop_from_stack(memory);
+                    self.z_n_register_a_set_status();
+                    cycle -= 4;
+                },
+                Self::PLP_IMPLIED => {
+                    let status = self.pop_from_stack(memory);
+                    self.n = (status >> 7) & 1;
+                    self.v = (status >> 6) & 1;
+                    self.b = (status >> 4) & 1;
+                    self.d = (status >> 3) & 1;
+                    self.i = (status >> 2) & 1;
+                    self.z = (status >> 1) & 1;
+                    self.c = status & 1;
+                    cycle -= 4;
                 },
                 _ => {
                     println!("Errore, istruzione {} non riconosciuta", instruction);

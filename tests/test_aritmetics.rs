@@ -53,4 +53,78 @@ mod tests {
 
         assert_eq!(cpu.a, 0b1100100);
     }
+
+    #[test]
+    fn test_adc_zero_page_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0101_0101;
+        cpu.x = 0x10;
+        mem.data[0xFFFC] = Cpu::ADC_ZERO_PAGE_X;
+        mem.data[0xFFFD] = 0xAB;
+        mem.data[0xAB + 0x10] = 0b0000_1111;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100100);
+    }
+
+    #[test]
+    fn test_adc_absolute() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0101_0101;
+        mem.data[0xFFFC] = Cpu::ADC_ABSOLUTE;
+        mem.data[0xFFFD] = 0xAB;
+        mem.data[0xFFFE] = 0xAB;
+        mem.data[0xABAB] = 0b0000_1111;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100100);
+    }
+
+    #[test]
+    fn test_adc_absolute_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0101_0101;
+        cpu.x = 0x50;
+        mem.data[0xFFFC] = Cpu::ADC_ABSOLUTE_X;
+        mem.data[0xFFFD] = 0xF0;
+        mem.data[0xFFFE] = 0xAB;
+        mem.data[0xABF0 + 0x50] = 0b0000_1111;
+        cpu.execute(5, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100100);
+    }
+
+    #[test]
+    fn test_adc_absolute_y() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0101_0101;
+        cpu.y = 0x05;
+        mem.data[0xFFFC] = Cpu::ADC_ABSOLUTE_Y;
+        mem.data[0xFFFD] = 0x00;
+        mem.data[0xFFFE] = 0x20;
+        mem.data[0x2000 + 0x05] = 0b0000_1111;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100100);
+    }
+
+    #[test]
+    fn test_adc_indirect_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0101_0101;
+        cpu.x = 0x10;
+        mem.data[0xFFFC] = Cpu::ADC_INDIRECT_X;
+        mem.data[0xFFFD] = 0xFF;
+        mem.data[0x000F] = 0xAB;
+        mem.data[0x0010] = 0xCD;
+        mem.data[0xCDAB] = 0b0000_1111;
+        cpu.execute(6, &mut mem);
+
+        assert_eq!(cpu.a, 0b1100100);
+    }
 }

@@ -114,6 +114,11 @@ impl Cpu {
     pub const PLP_IMPLIED: u8 = 0x28;
     pub const ADC_IMMEDIATE: u8 = 0x69;
     pub const ADC_ZERO_PAGE: u8 = 0x65;
+    pub const ADC_ZERO_PAGE_X: u8 = 0x75;
+    pub const ADC_ABSOLUTE: u8 = 0x6D;
+    pub const ADC_ABSOLUTE_X: u8 = 0x7D;
+    pub const ADC_ABSOLUTE_Y: u8 = 0x79;
+    pub const ADC_INDIRECT_X: u8 = 0x61;
 
     pub fn new() -> Self {
         Self {
@@ -173,6 +178,10 @@ impl Cpu {
     fn pop_from_stack(&mut self, memory: &mut Memory) -> u8 {
         self.sp = self.sp.wrapping_add(1);
         memory.data[0x0100 + self.sp as usize]
+    }
+
+    fn is_page_crossed(&mut self, absolute_address: usize, register: u8) -> bool {
+        (absolute_address >> 8) != (absolute_address.wrapping_add(register as usize) >> 8)
     }
 
     fn z_n_register_a_set_status(&mut self) {
@@ -239,28 +248,29 @@ impl Cpu {
                     cycle -= 4;
                 },
                 Self::LDA_ABSOLUTE => {
-                    let absolute_address = self.fetch_word(memory) as usize;
-                    self.a = memory.data[absolute_address];
+                    let address = self.fetch_word(memory) as usize;
+                    self.a = memory.data[address];
                     self.z_n_register_a_set_status();
                     cycle -= 4;
                 },
                 Self::LDA_ABSOLUTE_X => {
-                    let mut absolute_address = self.fetch_word(memory) as usize;
-                    if (absolute_address >> 8) != (absolute_address.wrapping_add(self.x as usize) >> 8) {
+                    let mut address = self.fetch_word(memory) as usize;
+                    if self.is_page_crossed(address, self.x) {
                         cycle -= 1;
                     }
-                    absolute_address = absolute_address.wrapping_add(self.x as usize);
-                    self.a = memory.data[absolute_address];
+                    address = address.wrapping_add(self.x as usize);
+                    self.a = memory.data[address];
                     self.z_n_register_a_set_status();
                     cycle -= 4;
                 },
                 Self::LDA_ABSOLUTE_Y => {
-                    let mut absolute_address = self.fetch_word(memory) as usize;
-                    if (absolute_address >> 8) != (absolute_address.wrapping_add(self.y as usize) >> 8) {
+                    let mut address = self.fetch_word(memory) as usize;
+                    if self.is_page_crossed(
+                        address, self.y) {
                         cycle -= 1;
                     }
-                    absolute_address = absolute_address.wrapping_add(self.y as usize);
-                    self.a = memory.data[absolute_address];
+                    address = address.wrapping_add(self.y as usize);
+                    self.a = memory.data[address];
                     self.z_n_register_a_set_status();
                     cycle -= 4;
                 },
@@ -274,7 +284,7 @@ impl Cpu {
                 Self::LDA_INDIRECT_Y => {
                     let zero_page_address = self.fetch_byte(memory) as u16;
                     let mut indirect_address = self.read_word(memory, zero_page_address) as usize;
-                    if (indirect_address >> 8) != (indirect_address.wrapping_add(self.y as usize) >> 8) {
+                    if self.is_page_crossed(indirect_address, self.y) {
                         cycle -= 1;
                     }
                     indirect_address = indirect_address.wrapping_add(self.y as usize);
@@ -330,7 +340,7 @@ impl Cpu {
                 },
                 Self::LDX_ABSOLUTE_Y => {
                     let mut absolute_address = self.fetch_word(memory) as usize;
-                    if (absolute_address >> 8) != (absolute_address.wrapping_add(self.y as usize) >> 8) {
+                    if self.is_page_crossed(absolute_address, self.y) {
                         cycle -= 1;
                     }
                     absolute_address = absolute_address.wrapping_add(self.y as usize);
@@ -363,7 +373,7 @@ impl Cpu {
                 },
                 Self::LDY_ABSOLUTE_X => {
                     let mut absolute_address = self.fetch_word(memory) as usize;
-                    if (absolute_address >> 8) != (absolute_address.wrapping_add(self.x as usize) >> 8) {
+                    if self.is_page_crossed(absolute_address, self.x) {
                         cycle -= 1;
                     }
                     absolute_address = absolute_address.wrapping_add(self.x as usize);
@@ -550,7 +560,7 @@ impl Cpu {
                 Self::AND_INDIRECT_Y => {
                     let zero_page_address = self.fetch_byte(memory) as u16;
                     let mut indirect_address = self.read_word(memory, zero_page_address) as usize;
-                    if (indirect_address >> 8) != (indirect_address.wrapping_add(self.y as usize) >> 8) {
+                    if self.is_page_crossed(indirect_address, self.y) {
                         cycle -= 1;
                     }
                     indirect_address = indirect_address.wrapping_add(self.y as usize);
@@ -583,7 +593,7 @@ impl Cpu {
                 },
                 Self::ORA_ABSOLUTE_X => {
                     let mut address = self.fetch_word(memory) as usize;
-                    if (address >> 8) != ((address.wrapping_add(self.x as usize)) >> 8) {
+                    if self.is_page_crossed(address, self.y) {
                         cycle -= 1;
                     }
                     address = address.wrapping_add(self.x as usize);
@@ -593,7 +603,7 @@ impl Cpu {
                 },
                 Self::ORA_ABSOLUTE_Y => {
                     let mut address = self.fetch_word(memory) as usize;
-                    if (address >> 8) != ((address.wrapping_add(self.y as usize)) >> 8) {
+                    if self.is_page_crossed(address, self.y) {
                         cycle -= 1;
                     }
                     address = address.wrapping_add(self.y as usize);
@@ -602,16 +612,16 @@ impl Cpu {
                     cycle -= 4;
                 },
                 Self::ORA_INDIRECT_X => {
-                    let zero_page_address = self.fetch_word(memory).wrapping_add(self.x as u16);
+                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x) as u16;
                     let indirect_address = self.read_word(memory, zero_page_address) as usize;
                     self.a |= memory.data[indirect_address];
                     self.end_or_set_status();
                     cycle -= 6;
                 },
                 Self::ORA_INDIRECT_Y => {
-                    let zero_page_address = self.fetch_word(memory);
+                    let zero_page_address = self.fetch_byte(memory) as u16;
                     let mut indirect_address = self.read_word(memory, zero_page_address) as usize;
-                    if (indirect_address >> 8) != (indirect_address.wrapping_add(self.y as usize) >> 8) {
+                    if self.is_page_crossed(indirect_address, self.y) {
                         cycle -= 1;
                     }
                     indirect_address = indirect_address.wrapping_add(self.y as usize);
@@ -645,7 +655,7 @@ impl Cpu {
                 },
                 Self::EOR_ABSOLUTE_X => {
                     let mut address = self.fetch_word(memory) as usize;
-                    if (address >> 8) != ((address.wrapping_add(self.x as usize)) >> 8) {
+                    if self.is_page_crossed(address, self.y) {
                         cycle -= 1;
                     }
                     address = address.wrapping_add(self.x as usize);
@@ -655,7 +665,7 @@ impl Cpu {
                 },
                 Self::EOR_ABSOLUTE_Y => {
                     let mut address = self.fetch_word(memory) as usize;
-                    if (address >> 8) != ((address.wrapping_add(self.y as usize)) >> 8) {
+                    if self.is_page_crossed(address, self.y) {
                         cycle -= 1;
                     }
                     address = address.wrapping_add(self.y as usize);
@@ -664,16 +674,16 @@ impl Cpu {
                     cycle -= 4;
                 },
                 Self::EOR_INDIRECT_X => {
-                    let zero_page_address = self.fetch_word(memory).wrapping_add(self.x as u16);
+                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x) as u16;
                     let indirect_address = self.read_word(memory, zero_page_address) as usize;
                     self.a ^= memory.data[indirect_address];
                     self.end_or_set_status();
                     cycle -= 6;
                 },
                 Self::EOR_INDIRECT_Y => {
-                    let zero_page_address = self.fetch_word(memory);
+                    let zero_page_address = self.fetch_byte(memory) as u16;
                     let mut indirect_address = self.read_word(memory, zero_page_address) as usize;
-                    if (indirect_address >> 8) != (indirect_address.wrapping_add(self.y as usize) >> 8) {
+                    if self.is_page_crossed(indirect_address, self.y) {
                         cycle -= 1;
                     }
                     indirect_address = indirect_address.wrapping_add(self.y as usize);
@@ -866,8 +876,60 @@ impl Cpu {
                     self.adc_sbc_set_status(operand, a, sum);
                     cycle -= 3;
                 },
+                Self::ADC_ZERO_PAGE_X => {
+                    let address = self.fetch_byte(memory).wrapping_add(self.x) as usize;
+                    let operand = memory.data[address];
+                    let a = self.a;
+                    let sum = a as u16 + operand as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 4;
+                },
+                Self::ADC_ABSOLUTE => {
+                    let address = self.fetch_word(memory) as usize;
+                    let operand = memory.data[address];
+                    let a = self.a;
+                    let sum = a as u16 + operand as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 4;
+                },
+                Self::ADC_ABSOLUTE_X => {
+                    let address = self.fetch_word(memory) as usize;
+                    if self.is_page_crossed(address, self.x) {
+                        cycle -= 1;
+                    }
+                    let operand = memory.data[address.wrapping_add(self.x as usize)];
+                    let a = self.a;
+                    let sum = a as u16 + operand as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 4;
+                },
+                Self::ADC_ABSOLUTE_Y => {
+                    let address = self.fetch_word(memory) as usize;
+                    if self.is_page_crossed(address, self.y) {
+                        cycle -= 1;
+                    }
+                    let operand = memory.data[address.wrapping_add(self.y as usize)];
+                    let a = self.a;
+                    let sum = a as u16 + operand as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 4;
+                },
+                Self::ADC_INDIRECT_X => {
+                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x) as u16;
+                    let indirect_address = self.read_word(memory, zero_page_address) as usize;
+                    let operand = memory.data[indirect_address];
+                    let a = self.a;
+                    let sum = a as u16 + operand as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 6;
+                },
                 _ => {
-                    println!("Errore, istruzione {} non riconosciuta", instruction);
+                    println!("Error, instruction {} not recognized", instruction);
                     break;
                 }
             }

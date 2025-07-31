@@ -1,5 +1,7 @@
 use crate::memory::memory::Memory;
 
+// Userò, per accedere al bit più significativo, sia byte >> 7 che byte & 0b1000_0000. Fanno la stessa cosa
+
 #[derive(Debug)]
 pub struct Cpu {
     pub pc: usize,  // 16 bits program counter
@@ -110,6 +112,8 @@ impl Cpu {
     pub const PHP_IMPLIED: u8 = 0x08;
     pub const PLA_IMPLIED: u8 = 0x68;
     pub const PLP_IMPLIED: u8 = 0x28;
+    pub const ADC_IMMEDIATE: u8 = 0x69;
+    pub const ADC_ZERO_PAGE: u8 = 0x65;
 
     pub fn new() -> Self {
         Self {
@@ -135,13 +139,13 @@ impl Cpu {
         self.c = 0;
     }
 
-    pub fn fetch_byte(&mut self, memory: &Memory) -> u8 {
+    fn fetch_byte(&mut self, memory: &Memory) -> u8 {
         let data = memory.data[self.pc];
         self.pc += 1;
         data
     }
 
-    pub fn fetch_word(&mut self, memory: &Memory) -> u16 {
+    fn fetch_word(&mut self, memory: &Memory) -> u16 {
         let first_byte = memory.data[self.pc];
         self.pc += 1;
         let second_byte = memory.data[self.pc];
@@ -149,58 +153,65 @@ impl Cpu {
         (second_byte as u16) << 8 | first_byte as u16
     }
 
-    pub fn read_byte(&mut self, memory: &Memory, address: u16) -> u8 {
+    fn read_byte(&mut self, memory: &Memory, address: u16) -> u8 {
         let address = address as usize;
         let data = memory.data[address];
         data
     }
 
-    pub fn read_word(&mut self, memory: &Memory, address:u16) -> u16 {
+    fn read_word(&mut self, memory: &Memory, address:u16) -> u16 {
         let first_byte = memory.data[address as usize];
         let second_byte = memory.data[(address + 1) as usize];
         (second_byte as u16) << 8 | first_byte as u16
     }
 
-    pub fn push_on_stack(&mut self, memory: &mut Memory, value: u8) {
+    fn push_on_stack(&mut self, memory: &mut Memory, value: u8) {
         memory.data[0x0100 + self.sp as usize] = value;
         self.sp = self.sp.wrapping_sub(1);
     }
 
-    pub fn pop_from_stack(&mut self, memory: &mut Memory) -> u8 {
+    fn pop_from_stack(&mut self, memory: &mut Memory) -> u8 {
         self.sp = self.sp.wrapping_add(1);
         memory.data[0x0100 + self.sp as usize]
     }
 
-    pub fn z_n_register_a_set_status(&mut self) {
+    fn z_n_register_a_set_status(&mut self) {
         self.z = (self.a == 0) as u8;
         self.n = ((self.a & 0b1000_0000) > 0) as u8;
     }
 
-    pub fn z_n_register_x_set_status(&mut self) {
+    fn z_n_register_x_set_status(&mut self) {
         self.z = (self.x == 0) as u8;
         self.n = ((self.x & 0b1000_0000) > 0) as u8;
     }
 
-    pub fn z_n_register_y_set_status(&mut self) {
+    fn z_n_register_y_set_status(&mut self) {
         self.z = (self.y == 0) as u8;
         self.n = ((self.y & 0b1000_0000) > 0) as u8;
     }
 
-    pub fn asl_set_status(&mut self, original: u8, result: u8) {
+    fn asl_set_status(&mut self, original: u8, result: u8) {
         self.c = ((original & 0b1000_0000) != 0) as u8; 
         self.z = (self.a == 0) as u8;
         self.n = ((result & 0b1000_0000) > 0) as u8;
     }
 
-    pub fn end_or_set_status(&mut self) {
+    fn end_or_set_status(&mut self) {
         self.z = (self.a == 0) as u8;
         self.n = ((self.a & 0b1000_0000) > 0) as u8;
     }
 
-    pub fn bit_set_status(&mut self, and_result: u8, memory_value: u8) {
+    fn bit_set_status(&mut self, and_result: u8, memory_value: u8) {
         self.z = (and_result == 0) as u8;
         self.n = ((memory_value & 0b1000_0000) > 0) as u8;
         self.v = ((memory_value & 0b0100_0000) > 0) as u8;
+    }
+
+    fn adc_sbc_set_status(&mut self, operand: u8, a: u8, sum: u16) {
+        self.c = (sum > 0xFF) as u8;
+        self.z = (self.a == 0) as u8;
+        self.n = ((self.a & 0b1000_0000) > 0) as u8;
+        self.v = ((operand >> 7) == (a >> 7) && (self.n) != (a >> 7)) as u8;
     }
 
     pub fn execute(&mut self, tick: u32, memory: &mut Memory) {
@@ -837,6 +848,23 @@ impl Cpu {
                     self.z = (status >> 1) & 1;
                     self.c = status & 1;
                     cycle -= 4;
+                },
+                Self::ADC_IMMEDIATE => {
+                    let operand = self.fetch_byte(memory);
+                    let a = self.a;
+                    let sum = a as u16 + operand as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 2;
+                },
+                Self::ADC_ZERO_PAGE => {
+                    let address = self.fetch_byte(memory) as usize;
+                    let operand = memory.data[address];
+                    let a = self.a;
+                    let sum = a as u16 + operand as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 3;
                 },
                 _ => {
                     println!("Errore, istruzione {} non riconosciuta", instruction);

@@ -170,6 +170,12 @@ impl Cpu {
         (second_byte as u16) << 8 | first_byte as u16
     }
 
+    fn read_word_zero_page(&mut self, memory: &Memory, address: u8) -> u16 {
+        let first_byte = memory.data[address as usize];
+        let second_byte = memory.data[(address.wrapping_add(1)) as usize];
+        (second_byte as u16) << 8 | first_byte as u16
+    }
+
     fn push_on_stack(&mut self, memory: &mut Memory, value: u8) {
         memory.data[0x0100 + self.sp as usize] = value;
         self.sp = self.sp.wrapping_sub(1);
@@ -276,14 +282,14 @@ impl Cpu {
                 },
                 Self::LDA_INDIRECT_X => {
                     let table_address = self.fetch_byte(memory).wrapping_add(self.x);
-                    let indirect_address = self.read_word(memory, table_address as u16) as usize;
+                    let indirect_address = self.read_word_zero_page(memory, table_address) as usize;
                     self.a = memory.data[indirect_address];
                     self.z_n_register_a_set_status();
                     cycle -= 6;
                 },
                 Self::LDA_INDIRECT_Y => {
-                    let zero_page_address = self.fetch_byte(memory) as u16;
-                    let mut indirect_address = self.read_word(memory, zero_page_address) as usize;
+                    let zero_page_address = self.fetch_byte(memory);
+                    let mut indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
                     if self.is_page_crossed(indirect_address, self.y) {
                         cycle -= 1;
                     }
@@ -407,14 +413,14 @@ impl Cpu {
                     cycle -= 5;
                 },
                 Self::STA_INDIRECT_X => {
-                    let table_address = self.fetch_byte(memory).wrapping_add(self.x) as u16;
-                    let indirect_address = self.read_word(memory, table_address) as usize;
+                    let table_address = self.fetch_byte(memory).wrapping_add(self.x);
+                    let indirect_address = self.read_word_zero_page(memory, table_address) as usize;
                     memory.data[indirect_address] = self.a;
                     cycle -= 6;
                 },
                 Self::STA_INDIRECT_Y => {
-                    let table_address = self.fetch_byte(memory) as u16;
-                    let indirect_address = self.read_word(memory, table_address).wrapping_add(self.y as u16) as usize;
+                    let table_address = self.fetch_byte(memory);
+                    let indirect_address = self.read_word_zero_page(memory, table_address).wrapping_add(self.y as u16) as usize;
                     memory.data[indirect_address] = self.a;
                     cycle -= 6;
                 },
@@ -551,15 +557,15 @@ impl Cpu {
                     cycle -= 4;
                 },
                 Self::AND_INDIRECT_X => {
-                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x) as u16;
-                    let indirect_address = self.read_word(memory, zero_page_address) as usize;
+                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x);
+                    let indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
                     self.a &= memory.data[indirect_address];
                     self.end_or_set_status();
                     cycle -= 6;
                 },
                 Self::AND_INDIRECT_Y => {
-                    let zero_page_address = self.fetch_byte(memory) as u16;
-                    let mut indirect_address = self.read_word(memory, zero_page_address) as usize;
+                    let zero_page_address = self.fetch_byte(memory);
+                    let mut indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
                     if self.is_page_crossed(indirect_address, self.y) {
                         cycle -= 1;
                     }
@@ -612,15 +618,15 @@ impl Cpu {
                     cycle -= 4;
                 },
                 Self::ORA_INDIRECT_X => {
-                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x) as u16;
-                    let indirect_address = self.read_word(memory, zero_page_address) as usize;
+                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x);
+                    let indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
                     self.a |= memory.data[indirect_address];
                     self.end_or_set_status();
                     cycle -= 6;
                 },
                 Self::ORA_INDIRECT_Y => {
-                    let zero_page_address = self.fetch_byte(memory) as u16;
-                    let mut indirect_address = self.read_word(memory, zero_page_address) as usize;
+                    let zero_page_address = self.fetch_byte(memory);
+                    let mut indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
                     if self.is_page_crossed(indirect_address, self.y) {
                         cycle -= 1;
                     }
@@ -674,15 +680,15 @@ impl Cpu {
                     cycle -= 4;
                 },
                 Self::EOR_INDIRECT_X => {
-                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x) as u16;
-                    let indirect_address = self.read_word(memory, zero_page_address) as usize;
+                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x);
+                    let indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
                     self.a ^= memory.data[indirect_address];
                     self.end_or_set_status();
                     cycle -= 6;
                 },
                 Self::EOR_INDIRECT_Y => {
-                    let zero_page_address = self.fetch_byte(memory) as u16;
-                    let mut indirect_address = self.read_word(memory, zero_page_address) as usize;
+                    let zero_page_address = self.fetch_byte(memory);
+                    let mut indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
                     if self.is_page_crossed(indirect_address, self.y) {
                         cycle -= 1;
                     }
@@ -919,8 +925,8 @@ impl Cpu {
                     cycle -= 4;
                 },
                 Self::ADC_INDIRECT_X => {
-                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x) as u16;
-                    let indirect_address = self.read_word(memory, zero_page_address) as usize;
+                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x);
+                    let indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
                     let operand = memory.data[indirect_address];
                     let a = self.a;
                     let sum = a as u16 + operand as u16 + self.c as u16;

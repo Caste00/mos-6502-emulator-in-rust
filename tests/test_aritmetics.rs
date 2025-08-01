@@ -127,4 +127,20 @@ mod tests {
 
         assert_eq!(cpu.a, 0b1100100);
     }
+
+    #[test]
+    fn test_adc_indirect_y() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0x01;
+        cpu.y = 0x01;
+        mem.data[0xFFFC] = Cpu::ADC_INDIRECT_Y;
+        mem.data[0xFFFD] = 0x10;
+        mem.data[0x0010] = 0xFF;
+        mem.data[0x0011] = 0x01;
+        mem.data[0x0200] = 0x0F;
+        cpu.execute(6, &mut mem);
+        
+        assert_eq!(cpu.a, 0x10);
+    }
 }

@@ -119,6 +119,7 @@ impl Cpu {
     pub const ADC_ABSOLUTE_X: u8 = 0x7D;
     pub const ADC_ABSOLUTE_Y: u8 = 0x79;
     pub const ADC_INDIRECT_X: u8 = 0x61;
+    pub const ADC_INDIRECT_Y: u8 = 0x71;
 
     pub fn new() -> Self {
         Self {
@@ -315,10 +316,8 @@ impl Cpu {
                     cycle -= 3;
                 },
                 Self::JMP_INDIRECT => {
-                    let jmp_address = self.fetch_word(memory) as usize;
-                    let fist_byte = memory.data[jmp_address] as usize;
-                    let second_byte = memory.data[jmp_address + 1] as usize;
-                    self.pc = (second_byte << 8) | fist_byte;
+                    let jmp_address = self.fetch_word(memory);
+                    self.pc = self.read_word(memory, jmp_address) as usize;
                     cycle -= 5;
                 },
                 Self::LDX_IMMEDIATE => {
@@ -933,6 +932,19 @@ impl Cpu {
                     self.a = sum as u8;
                     self.adc_sbc_set_status(operand, a, sum);
                     cycle -= 6;
+                },
+                Self::ADC_INDIRECT_Y => {
+                    let zero_page_address = self.fetch_byte(memory);
+                    let indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
+                    if self.is_page_crossed(indirect_address, self.y) {
+                        cycle -= 1;
+                    }
+                    let operand = memory.data[indirect_address.wrapping_add(self.y as usize)];
+                    let a = self.a;
+                    let sum = a as u16 + operand as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 5;
                 },
                 _ => {
                     println!("Error, instruction {} not recognized", instruction);

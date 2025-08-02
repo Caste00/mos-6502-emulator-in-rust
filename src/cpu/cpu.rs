@@ -120,6 +120,7 @@ impl Cpu {
     pub const ADC_ABSOLUTE_Y: u8 = 0x79;
     pub const ADC_INDIRECT_X: u8 = 0x61;
     pub const ADC_INDIRECT_Y: u8 = 0x71;
+    pub const SBC_IMMEDIATE: u8 = 0xE9;
 
     pub fn new() -> Self {
         Self {
@@ -226,7 +227,7 @@ impl Cpu {
     fn adc_sbc_set_status(&mut self, operand: u8, a: u8, sum: u16) {
         self.c = (sum > 0xFF) as u8;
         self.z = (self.a == 0) as u8;
-        self.n = ((self.a & 0b1000_0000) > 0) as u8;
+        self.n = ((sum & 0b1000_0000) != 0) as u8;
         self.v = ((operand >> 7) == (a >> 7) && (self.n) != (a >> 7)) as u8;
     }
 
@@ -945,6 +946,15 @@ impl Cpu {
                     self.a = sum as u8;
                     self.adc_sbc_set_status(operand, a, sum);
                     cycle -= 5;
+                },
+                Self::SBC_IMMEDIATE => {
+                    let operand = self.fetch_byte(memory);
+                    let value = operand ^ 0xFF;
+                    let a = self.a;
+                    let sum = a as u16 + value as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 2;
                 },
                 _ => {
                     println!("Error, instruction {} not recognized", instruction);

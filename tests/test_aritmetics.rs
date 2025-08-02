@@ -143,4 +143,34 @@ mod tests {
         
         assert_eq!(cpu.a, 0x10);
     }
+
+    #[test]
+    fn test_sbc_immediate() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b1000_0000;
+        cpu.c = 1;
+        mem.data[0xFFFC] = Cpu::SBC_IMMEDIATE;
+        mem.data[0xFFFD] = 0b1000_0000;
+        cpu.execute(2, &mut mem);
+
+        assert_eq!(cpu.a, 0);
+        assert_eq!(cpu.c, 1);
+        assert_eq!(cpu.z, 1);
+        assert_eq!(cpu.v, 1);
+        assert_eq!(cpu.n, 0);
+
+        cpu.a = 0b0000_0000;
+        cpu.c = 0;
+        cpu.pc = 0xFFFC;
+        mem.data[0xFFFC] = Cpu::SBC_IMMEDIATE;
+        mem.data[0xFFFD] = 0b1000_0000;
+        cpu.execute(2, &mut mem);
+
+        assert_eq!(cpu.a, 0b0111_1111);
+        assert_eq!(cpu.c, 0);
+        assert_eq!(cpu.z, 0);
+        assert_eq!(cpu.v, 0);
+        assert_eq!(cpu.n, 0);
+    }
 }

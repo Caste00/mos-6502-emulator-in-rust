@@ -121,6 +121,9 @@ impl Cpu {
     pub const ADC_INDIRECT_X: u8 = 0x61;
     pub const ADC_INDIRECT_Y: u8 = 0x71;
     pub const SBC_IMMEDIATE: u8 = 0xE9;
+    pub const SBC_ZERO_PAGE: u8 = 0xE5;
+    pub const SBC_ZERO_PAGE_X: u8 = 0xF5;
+    pub const SBC_ABSOLUTE: u8 = 0xED;
 
     pub fn new() -> Self {
         Self {
@@ -955,6 +958,36 @@ impl Cpu {
                     self.a = sum as u8;
                     self.adc_sbc_set_status(operand, a, sum);
                     cycle -= 2;
+                },
+                Self::SBC_ZERO_PAGE => {
+                    let address = self.fetch_byte(memory) as usize;
+                    let operand = memory.data[address];
+                    let value = operand ^ 0xFF;
+                    let a = self.a;
+                    let sum = a as u16 + value as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 3;
+                },
+                Self::SBC_ZERO_PAGE_X => {
+                    let address = self.fetch_byte(memory).wrapping_add(self.x) as usize;
+                    let operand = memory.data[address];
+                    let value = operand ^ 0xFF;
+                    let a = self.a;
+                    let sum = a as u16 + value as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 4;
+                },
+                Self::SBC_ABSOLUTE => {
+                    let address = self.fetch_word(memory) as usize;
+                    let operand = memory.data[address];
+                    let value = operand ^ 0xFF;
+                    let a = self.a;
+                    let sum = a as u16 + value as u16 + self.c as u16;
+                    self.a = sum as u8;
+                    self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 4;
                 },
                 _ => {
                     println!("Error, instruction {} not recognized", instruction);

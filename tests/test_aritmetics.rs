@@ -173,4 +173,48 @@ mod tests {
         assert_eq!(cpu.v, 0);
         assert_eq!(cpu.n, 0);
     }
+
+    #[test]
+    fn test_sbc_zero_page() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0101_0101;
+        cpu.c = 1;
+        mem.data[0xFFFC] = Cpu::SBC_ZERO_PAGE;
+        mem.data[0xFFFD] = 0xAB;
+        mem.data[0xAB] = 0b0000_1111;
+        cpu.execute(3, &mut mem);
+
+        assert_eq!(cpu.a, 0b0100_0110);
+    }
+
+    #[test]
+    fn test_sbc_zero_page_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 0b0101_0101;
+        cpu.c = 1;
+        cpu.x = 0x10;
+        mem.data[0xFFFC] = Cpu::SBC_ZERO_PAGE_X;
+        mem.data[0xFFFD] = 0xAB;
+        mem.data[0xAB + 0x10] = 0b0000_1111;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.a, 0b0100_0110);
+    }
+
+    #[test]
+    fn test_sbc_absolute() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 20;
+        cpu.c = 1;
+        mem.data[0xFFFC] = Cpu::SBC_ABSOLUTE;
+        mem.data[0xFFFD] = 0x34;
+        mem.data[0xFFFE] = 0x12;
+        mem.data[0x1234] = 5;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.a, 15);
+    }
 }

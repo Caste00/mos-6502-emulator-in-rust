@@ -217,4 +217,70 @@ mod tests {
 
         assert_eq!(cpu.a, 15);
     }
+
+    #[test]
+    fn test_sbc_absolute_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 25;
+        cpu.c = 1;
+        cpu.x = 0x50;
+        mem.data[0xFFFC] = Cpu::SBC_ABSOLUTE_X;
+        mem.data[0xFFFD] = 0xF0;
+        mem.data[0xFFFE] = 0xAB;
+        mem.data[0xABF0 + 0x50] = 6;
+        cpu.execute(5, &mut mem);
+
+        assert_eq!(cpu.a, 19);
+    }
+
+    #[test]
+    fn test_sbc_absolute_y() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 25;
+        cpu.c = 1;
+        cpu.y = 0x10;
+        mem.data[0xFFFC] = Cpu::SBC_ABSOLUTE_Y;
+        mem.data[0xFFFD] = 0x00;
+        mem.data[0xFFFE] = 0x1B;
+        mem.data[0x1B00 + 0x10] = 6;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.a, 19);
+    }
+
+    #[test]
+    fn test_sbc_indirect_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 255;
+        cpu.c = 1;
+        cpu.x = 0x10;
+        mem.data[0xFFFC] = Cpu::SBC_INDIRECT_X;
+        mem.data[0xFFFD] = 0xFF;
+        mem.data[0x000F] = 0xCD;
+        mem.data[0x0010] = 0xAB;
+        mem.data[0xABCD] = 5;
+        cpu.execute(6, &mut mem);
+
+        assert_eq!(cpu.a, 250);
+    }
+
+    #[test]
+    fn test_sbc_indirect_y() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 48;
+        cpu.c = 1;
+        cpu.y = 0x01;
+        mem.data[0xFFFC] = Cpu::SBC_INDIRECT_Y;
+        mem.data[0xFFFD] = 0x10;
+        mem.data[0x0010] = 0xFF;
+        mem.data[0x0011] = 0x01;
+        mem.data[0x0200] = 8;
+        cpu.execute(6, &mut mem);
+
+        assert_eq!(cpu.a, 40);
+    }
 }

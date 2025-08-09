@@ -283,4 +283,82 @@ mod tests {
 
         assert_eq!(cpu.a, 40);
     }
+
+    #[test]
+    fn test_cmp_immediate() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 48;
+        mem.data[0xFFFC] = Cpu::CMP_IMMEDIATE;
+        mem.data[0xFFFD] = 48;
+        cpu.execute(2, &mut mem);
+
+        assert_eq!(cpu.c, 1);
+        assert_eq!(cpu.z, 1);
+        assert_eq!(cpu.n, 0);
+
+        cpu.a = 48;
+        cpu.pc = 0xFFFC;
+        mem.data[0xFFFC] = Cpu::CMP_IMMEDIATE;
+        mem.data[0xFFFD] = 49;
+        cpu.execute(2, &mut mem);
+
+        assert_eq!(cpu.c, 0);
+        assert_eq!(cpu.z, 0);
+        assert_eq!(cpu.n, 1);
+    }
+
+    #[test]
+    fn test_cmp_zero_page() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 48;
+        mem.data[0xFFFC] = Cpu::CMP_ZERO_PAGE;
+        mem.data[0xFFFD] = 0x19;
+        mem.data[0x0019] = 48;
+        cpu.execute(3, &mut mem);
+
+        assert_eq!(cpu.c, 1);
+        assert_eq!(cpu.z, 1);
+        assert_eq!(cpu.n, 0);
+
+        cpu.a = 48;
+        cpu.pc = 0xFFFC;
+        mem.data[0xFFFC] = Cpu::CMP_ZERO_PAGE;
+        mem.data[0xFFFD] = 0x19;
+        mem.data[0x0019] = 49;
+        cpu.execute(3, &mut mem);
+
+        assert_eq!(cpu.c, 0);
+        assert_eq!(cpu.z, 0);
+        assert_eq!(cpu.n, 1);
+    }
+
+    #[test]
+    fn test_cmp_zero_page_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 48;
+        cpu.x = 0x10;
+        mem.data[0xFFFC] = Cpu::CMP_ZERO_PAGE_X;
+        mem.data[0xFFFD] = 0x19;
+        mem.data[0x0029] = 48;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.c, 1);
+        assert_eq!(cpu.z, 1);
+        assert_eq!(cpu.n, 0);
+
+        cpu.a = 48;
+        cpu.x = 0x10;
+        cpu.pc = 0xFFFC;
+        mem.data[0xFFFC] = Cpu::CMP_ZERO_PAGE_X;
+        mem.data[0xFFFD] = 0xFF;
+        mem.data[0x000F] = 49;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.c, 0);
+        assert_eq!(cpu.z, 0);
+        assert_eq!(cpu.n, 1);
+    }
 }

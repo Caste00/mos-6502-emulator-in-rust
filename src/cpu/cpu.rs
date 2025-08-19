@@ -131,6 +131,11 @@ impl Cpu {
     pub const CMP_IMMEDIATE: u8 = 0xC9;
     pub const CMP_ZERO_PAGE: u8 = 0xC5;
     pub const CMP_ZERO_PAGE_X: u8 = 0xD5;
+    pub const CMP_ABSOLUTE: u8 = 0xCD;
+    pub const CMP_ABSOLUTE_X: u8 = 0xDD;
+    pub const CMP_ABSOLUTE_Y: u8 = 0xD9;
+    pub const CMP_INDIRECT_X: u8 = 0xC1;
+    pub const CMP_INDIRECT_Y: u8 = 0xD1;
 
     pub fn new() -> Self {
         Self {
@@ -241,10 +246,10 @@ impl Cpu {
         self.v = ((operand >> 7) == (a >> 7) && (self.n) != (a >> 7)) as u8;
     }
 
-    fn cmp_set_status(&mut self, operand: u8) {
-        self.c = (self.a >= operand) as u8;
-        self.z = (self.a == operand) as u8;
-        self.n = (((self.a.wrapping_sub(operand)) >> 7) == 1) as u8;
+    fn cmp_set_status(&mut self, register:u8, operand: u8) {
+        self.c = (register >= operand) as u8;
+        self.z = (register == operand) as u8;
+        self.n = (((register.wrapping_sub(operand)) & 0x80) > 0) as u8;
     }
 
     pub fn execute(&mut self, tick: u32, memory: &mut Memory) {
@@ -1055,20 +1060,61 @@ impl Cpu {
                 },
                 Self::CMP_IMMEDIATE => {
                     let operand = self.fetch_byte(memory);
-                    self.cmp_set_status(operand);
+                    self.cmp_set_status(self.a, operand);
                     cycle -= 2;
                 },
                 Self::CMP_ZERO_PAGE => {
                     let address = self.fetch_byte(memory) as usize;
                     let operand = memory.data[address];
-                    self.cmp_set_status(operand);
+                    self.cmp_set_status(self.a, operand);
                     cycle -= 3;
                 },
                 Self::CMP_ZERO_PAGE_X => {
                     let address = self.fetch_byte(memory).wrapping_add(self.x) as usize;
                     let operand = memory.data[address];
-                    self.cmp_set_status(operand);
+                    self.cmp_set_status(self.a, operand);
                     cycle -= 4;
+                },
+                Self::CMP_ABSOLUTE => {
+                    let address = self.fetch_word(memory) as usize;
+                    let operand = memory.data[address];
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 4;
+                },
+                Self::CMP_ABSOLUTE_X => {
+                    let address = self.fetch_word(memory) as usize;
+                    if self.page_crossed(address, self.x) {
+                        cycle -= 1;
+                    }
+                    let operand = memory.data[address.wrapping_add(self.x as usize)];
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 4;
+                },
+                Self::CMP_ABSOLUTE_Y => {
+                    let address = self.fetch_word(memory) as usize;
+                    if self.page_crossed(address, self.y) {
+                        cycle -= 1;
+                    }
+                    let operand = memory.data[address.wrapping_add(self.x as usize)];
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 4;
+                },
+                Self::CMP_INDIRECT_X => {
+                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x);
+                    let indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
+                    let operand = memory.data[indirect_address];
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 6;
+                },
+                Self::CMP_INDIRECT_Y => {
+                    let zero_page_address = self.fetch_byte(memory);
+                    let indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
+                    if self.page_crossed(indirect_address, self.y) {
+                        cycle -= 1;
+                    }
+                    let operand = memory.data[indirect_address.wrapping_add(self.y as usize)];
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 5;
                 },
                 _ => {
                     println!("Error, instruction {} not recognized", instruction);

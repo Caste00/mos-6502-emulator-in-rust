@@ -361,4 +361,130 @@ mod tests {
         assert_eq!(cpu.z, 0);
         assert_eq!(cpu.n, 1);
     }
+
+    #[test]
+    fn test_cmp_absolute_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 48;
+        cpu.x = 0x10;
+        mem.data[0xFFFC] = Cpu::CMP_ABSOLUTE_X;
+        mem.data[0xFFFD] = 0x01;
+        mem.data[0xFFFE] = 0x23;
+        mem.data[0x2301 + 0x10] = 48;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.c, 1);
+        assert_eq!(cpu.z, 1);
+        assert_eq!(cpu.n, 0);
+
+        cpu.reset();
+        cpu.a = 48;
+        cpu.x = 0x10;
+        mem.data[0xFFFC] = Cpu::CMP_ABSOLUTE_X;
+        mem.data[0xFFFD] = 0x01;
+        mem.data[0xFFFE] = 0x23;
+        mem.data[0x2301 + 0x10] = 45;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.c, 1);
+        assert_eq!(cpu.z, 0);
+        assert_eq!(cpu.n, 0);
+    }
+
+    #[test]
+    fn test_cmp_absolute_y() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 48;
+        cpu.x = 0x10;
+        mem.data[0xFFFC] = Cpu::CMP_ABSOLUTE_Y;
+        mem.data[0xFFFD] = 0x01;
+        mem.data[0xFFFE] = 0x23;
+        mem.data[0x2301 + 0x10] = 48;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.c, 1);
+        assert_eq!(cpu.z, 1);
+        assert_eq!(cpu.n, 0);
+
+        cpu.reset();
+        cpu.a = 48;
+        cpu.x = 0x10;
+        mem.data[0xFFFC] = Cpu::CMP_ABSOLUTE_Y;
+        mem.data[0xFFFD] = 0x01;
+        mem.data[0xFFFE] = 0x23;
+        mem.data[0x2301 + 0x10] = 49;
+        cpu.execute(4, &mut mem);
+
+        assert_eq!(cpu.c, 0);
+        assert_eq!(cpu.z, 0);
+        assert_eq!(cpu.n, 1);
+    }
+
+    #[test]
+    fn test_cmp_indirect_x() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 48;
+        cpu.x = 0x04;
+        mem.data[0xFFFC] = Cpu::CMP_INDIRECT_X;
+        mem.data[0xFFFD] = 0x20;
+        mem.data[0x0024] = 0x00;
+        mem.data[0x0025] = 0x30;
+        mem.data[0x3000] = 48;
+        cpu.execute(6, &mut mem);
+
+        assert_eq!(cpu.c, 1);
+        assert_eq!(cpu.z, 1);
+        assert_eq!(cpu.n, 0);
+
+        cpu.reset();
+        cpu.a = 48;
+        cpu.x = 0x04;
+        mem.data[0xFFFC] = Cpu::CMP_INDIRECT_X;
+        mem.data[0xFFFD] = 0x20;
+        mem.data[0x0024] = 0x00;
+        mem.data[0x0025] = 0x30;
+        mem.data[0x3000] = 49;
+        cpu.execute(6, &mut mem);
+
+        assert_eq!(cpu.c, 0);
+        assert_eq!(cpu.z, 0);
+        assert_eq!(cpu.n, 1);
+    }
+
+    #[test]
+    fn test_cmp_indirect_y() {
+        let (mut cpu, mut mem) = setup();
+
+        cpu.a = 48;
+        cpu.y = 0x10;
+        mem.data[0xFFFC] = Cpu::CMP_INDIRECT_Y;
+        mem.data[0xFFFD] = 0x40;
+        mem.data[0x0040] = 0xF0;
+        mem.data[0x0041] = 0x20;
+        mem.data[0x2100] = 48;
+        cpu.execute(6, &mut mem);
+
+        assert_eq!(cpu.c, 1);
+        assert_eq!(cpu.z, 1);
+        assert_eq!(cpu.n, 0);
+
+        cpu.reset();
+        cpu.a = 48;
+        cpu.y = 0x01;
+        mem.data[0xFFFC] = Cpu::CMP_INDIRECT_Y;
+        mem.data[0xFFFD] = 0x40;
+        mem.data[0x0040] = 0xF0;
+        mem.data[0x0041] = 0x20;
+        mem.data[0x20F1] = 49;
+        cpu.execute(5, &mut mem);
+
+        assert_eq!(cpu.c, 0);
+        assert_eq!(cpu.z, 0);
+        assert_eq!(cpu.n, 1);
+    }
+
+
 }

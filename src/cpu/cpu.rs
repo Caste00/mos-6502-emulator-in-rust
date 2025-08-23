@@ -136,6 +136,12 @@ impl Cpu {
     pub const CMP_ABSOLUTE_Y: u8 = 0xD9;
     pub const CMP_INDIRECT_X: u8 = 0xC1;
     pub const CMP_INDIRECT_Y: u8 = 0xD1;
+    pub const CPX_IMMEDIATE: u8 = 0xE0;
+    pub const CPX_ZERO_PAGE: u8 = 0xE4;
+    pub const CPX_ABSOLUTE: u8 = 0xEC;
+    pub const CPY_IMMEDIATE: u8 = 0xC0;
+    pub const CPY_ZERO_PAGE: u8 = 0xC4;
+    pub const CPY_ABSOLUTE: u8 = 0xCC;
 
     pub fn new() -> Self {
         Self {
@@ -1115,6 +1121,40 @@ impl Cpu {
                     let operand = memory.data[indirect_address.wrapping_add(self.y as usize)];
                     self.cmp_set_status(self.a, operand);
                     cycle -= 5;
+                },
+                Self::CPX_IMMEDIATE => {
+                    let operand = self.fetch_byte(memory);
+                    self.cmp_set_status(self.x, operand);
+                    cycle -= 2;
+                },
+                Self::CPX_ZERO_PAGE => {
+                    let address = self.fetch_byte(memory) as usize;
+                    let operand = memory.data[address];
+                    self.cmp_set_status(self.x, operand);
+                    cycle -= 3;
+                },
+                Self::CPX_ABSOLUTE => {
+                    let address = self.fetch_word(memory) as usize;
+                    let operand = memory.data[address];
+                    self.cmp_set_status(self.x, operand);
+                    cycle -= 4;
+                },
+                Self::CPY_IMMEDIATE => {
+                    let operand = self.fetch_byte(memory);
+                    self.cmp_set_status(self.y, operand);
+                    cycle -= 2;
+                },
+                Self::CPY_ZERO_PAGE => {
+                    let address = self.fetch_byte(memory) as usize;
+                    let operand = memory.data[address];
+                    self.cmp_set_status(self.y, operand);
+                    cycle -= 3;
+                },
+                Self::CPY_ABSOLUTE => {
+                    let address = self.fetch_word(memory) as usize;
+                    let operand = memory.data[address];
+                    self.cmp_set_status(self.y, operand);
+                    cycle -= 4;
                 },
                 _ => {
                     println!("Error, instruction {} not recognized", instruction);

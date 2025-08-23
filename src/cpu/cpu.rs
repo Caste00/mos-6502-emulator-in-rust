@@ -9,7 +9,7 @@ pub struct Cpu {
     pub a: u8,      // 8 bits accumulator
     pub x: u8,      // 8 bits index register
     pub y: u8,      // 8 bits index register
-    
+
     // potrei usare solo 8 bit e una maschera al posto di 7 variabili differenti
     pub n: u8,
     pub v: u8,
@@ -60,7 +60,7 @@ impl Cpu {
     pub const TXA_IMPLIED: u8 = 0x8A;
     pub const TAY_IMPLIED: u8 = 0xA8;
     pub const TYA_IMPLIED: u8 = 0x98;
-    pub const TXS_IMPLICIT: u8 = 0x9A;   
+    pub const TXS_IMPLICIT: u8 = 0x9A;
     pub const TSX_IMPLIED: u8 = 0xBA;
     pub const ASL_ACCUMULATOR: u8 = 0x0A;
     pub const ASL_ZERO_PAGE: u8 = 0x06;
@@ -128,6 +128,14 @@ impl Cpu {
     pub const SBC_ABSOLUTE_Y: u8 = 0xF9;
     pub const SBC_INDIRECT_X: u8 = 0xE1;
     pub const SBC_INDIRECT_Y: u8 = 0xF1;
+    pub const CMP_IMMEDIATE: u8 = 0xC9;
+    pub const CMP_ZERO_PAGE: u8 = 0xC5;
+    pub const CMP_ZERO_PAGE_X: u8 = 0xD5;
+    pub const CMP_ABSOLUTE: u8 = 0xCD;
+    pub const CMP_ABSOLUTE_X: u8 = 0xDD;
+    pub const CMP_ABSOLUTE_Y: u8 = 0xD9;
+    pub const CMP_INDIRECT_X: u8 = 0xC1;
+    pub const CMP_INDIRECT_Y: u8 = 0xD1;
 
     pub fn new() -> Self {
         Self {
@@ -139,9 +147,9 @@ impl Cpu {
     }
 
     pub fn reset(&mut self) {
-        self.pc = 0xFFFC;        // sarà da modificare 
+        self.pc = 0xFFFC;        // sarà da modificare
         self.sp = 0xFD;
-        self.a = 0; 
+        self.a = 0;
         self.x = 0;
         self.y = 0;
         self.n = 0;
@@ -215,7 +223,7 @@ impl Cpu {
     }
 
     fn asl_set_status(&mut self, original: u8, result: u8) {
-        self.c = ((original & 0b1000_0000) != 0) as u8; 
+        self.c = ((original & 0b1000_0000) != 0) as u8;
         self.z = (self.a == 0) as u8;
         self.n = ((result & 0b1000_0000) > 0) as u8;
     }
@@ -236,6 +244,12 @@ impl Cpu {
         self.z = (self.a == 0) as u8;
         self.n = ((sum & 0b1000_0000) != 0) as u8;
         self.v = ((operand >> 7) == (a >> 7) && (self.n) != (a >> 7)) as u8;
+    }
+
+    fn cmp_set_status(&mut self, register:u8, operand: u8) {
+        self.c = (register >= operand) as u8;
+        self.z = (register == operand) as u8;
+        self.n = (((register.wrapping_sub(operand)) & 0x80) > 0) as u8;
     }
 
     pub fn execute(&mut self, tick: u32, memory: &mut Memory) {
@@ -450,12 +464,12 @@ impl Cpu {
                     let address = self.fetch_byte(memory) as usize;
                     memory.data[address] = self.y;
                     cycle -= 3;
-                }, 
+                },
                 Self::STY_ZERO_PAGE_X => {
                     let address = self.fetch_byte(memory).wrapping_add(self.x) as usize;
                     memory.data[address] = self.y;
                     cycle -= 4;
-                }, 
+                },
                 Self::STY_ABSOLUTE => {
                     let address = self.fetch_word(memory) as usize;
                     memory.data[address] = self.y;
@@ -495,28 +509,28 @@ impl Cpu {
                     self.a = self.a.wrapping_shl(1);
                     self.asl_set_status(original, self.a);
                     cycle -= 2;
-                }, 
+                },
                 Self::ASL_ZERO_PAGE => {
                     let address = self.fetch_byte(memory) as usize;
                     let original = memory.data[address];
                     memory.data[address] = memory.data[address].wrapping_shl(1);
                     self.asl_set_status(original, memory.data[address]);
                     cycle -= 5;
-                }, 
+                },
                 Self::ASL_ZERO_PAGE_X => {
                     let address = self.fetch_byte(memory).wrapping_add(self.x) as usize;
                     let original = memory.data[address];
                     memory.data[address] = memory.data[address].wrapping_shl(1);
                     self.asl_set_status(original, memory.data[address]);
                     cycle -= 6;
-                }, 
+                },
                 Self::ASL_ABSOLUTE => {
                     let address = self.fetch_word(memory) as usize;
                     let original = memory.data[address];
                     memory.data[address] = memory.data[address].wrapping_shl(1);
                     self.asl_set_status(original, memory.data[address]);
                     cycle -= 6;
-                }, 
+                },
                 Self::ASL_ABSOLUTE_X => {
                     let address = self.fetch_word(memory).wrapping_add(self.x as u16) as usize;
                     let original = memory.data[address];
@@ -1042,6 +1056,64 @@ impl Cpu {
                     let sum = a as u16 + value as u16 + self.c as u16;
                     self.a = sum as u8;
                     self.adc_sbc_set_status(operand, a, sum);
+                    cycle -= 5;
+                },
+                Self::CMP_IMMEDIATE => {
+                    let operand = self.fetch_byte(memory);
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 2;
+                },
+                Self::CMP_ZERO_PAGE => {
+                    let address = self.fetch_byte(memory) as usize;
+                    let operand = memory.data[address];
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 3;
+                },
+                Self::CMP_ZERO_PAGE_X => {
+                    let address = self.fetch_byte(memory).wrapping_add(self.x) as usize;
+                    let operand = memory.data[address];
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 4;
+                },
+                Self::CMP_ABSOLUTE => {
+                    let address = self.fetch_word(memory) as usize;
+                    let operand = memory.data[address];
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 4;
+                },
+                Self::CMP_ABSOLUTE_X => {
+                    let address = self.fetch_word(memory) as usize;
+                    if self.page_crossed(address, self.x) {
+                        cycle -= 1;
+                    }
+                    let operand = memory.data[address.wrapping_add(self.x as usize)];
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 4;
+                },
+                Self::CMP_ABSOLUTE_Y => {
+                    let address = self.fetch_word(memory) as usize;
+                    if self.page_crossed(address, self.y) {
+                        cycle -= 1;
+                    }
+                    let operand = memory.data[address.wrapping_add(self.x as usize)];
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 4;
+                },
+                Self::CMP_INDIRECT_X => {
+                    let zero_page_address = self.fetch_byte(memory).wrapping_add(self.x);
+                    let indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
+                    let operand = memory.data[indirect_address];
+                    self.cmp_set_status(self.a, operand);
+                    cycle -= 6;
+                },
+                Self::CMP_INDIRECT_Y => {
+                    let zero_page_address = self.fetch_byte(memory);
+                    let indirect_address = self.read_word_zero_page(memory, zero_page_address) as usize;
+                    if self.page_crossed(indirect_address, self.y) {
+                        cycle -= 1;
+                    }
+                    let operand = memory.data[indirect_address.wrapping_add(self.y as usize)];
+                    self.cmp_set_status(self.a, operand);
                     cycle -= 5;
                 },
                 _ => {

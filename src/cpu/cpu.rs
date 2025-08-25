@@ -142,6 +142,9 @@ impl Cpu {
     pub const CPY_IMMEDIATE: u8 = 0xC0;
     pub const CPY_ZERO_PAGE: u8 = 0xC4;
     pub const CPY_ABSOLUTE: u8 = 0xCC;
+    pub const BRK_IMPLIED: u8 = 0x00;
+    pub const NOP_IMPLIED: u8 = 0xEA;
+    pub const RTI_IMPLIED: u8 = 0x40;
 
     pub fn new() -> Self {
         Self {
@@ -207,6 +210,20 @@ impl Cpu {
     fn pop_from_stack(&mut self, memory: &mut Memory) -> u8 {
         self.sp = self.sp.wrapping_add(1);
         memory.data[0x0100 + self.sp as usize]
+    }
+
+    fn get_status_flag(&mut self) -> u8 {
+        (self.n << 7) | (self.v << 6) | (1 << 5) | (self.b << 4) | (self.d << 3) | (self.i << 2) | (self.z << 1) | self.c
+    }
+
+    fn set_status_flag(&mut self, status: u8) {
+        self.n = (status >> 7) & 1;
+        self.v = (status >> 6) & 1;
+        self.b = (status >> 4) & 1;
+        self.d = (status >> 3) & 1;
+        self.i = (status >> 2) & 1;
+        self.z = (status >> 1) & 1;
+        self.c = status & 1;
     }
 
     fn page_crossed(&mut self, absolute_address: usize, register: u8) -> bool {
@@ -865,14 +882,7 @@ impl Cpu {
                     cycle -= 3;
                 },
                 Self::PHP_IMPLIED => {
-                    let mut status = 0b0010_0000;
-                    status |= self.n << 7;
-                    status |= self.v << 6;
-                    status |= self.b << 4;
-                    status |= self.d << 3;
-                    status |= self.i << 2;
-                    status |= self.z << 1;
-                    status |= self.c;
+                    let status = self.get_status_flag();
                     self.push_on_stack(memory, status);
                     cycle -= 3;
                 },
@@ -883,13 +893,7 @@ impl Cpu {
                 },
                 Self::PLP_IMPLIED => {
                     let status = self.pop_from_stack(memory);
-                    self.n = (status >> 7) & 1;
-                    self.v = (status >> 6) & 1;
-                    self.b = (status >> 4) & 1;
-                    self.d = (status >> 3) & 1;
-                    self.i = (status >> 2) & 1;
-                    self.z = (status >> 1) & 1;
-                    self.c = status & 1;
+                    self.set_status_flag(status);
                     cycle -= 4;
                 },
                 Self::ADC_IMMEDIATE => {
@@ -1155,6 +1159,29 @@ impl Cpu {
                     let operand = memory.data[address];
                     self.cmp_set_status(self.y, operand);
                     cycle -= 4;
+                },
+                Self::BRK_IMPLIED => {
+                    self.pc = self.pc.wrapping_add(1);
+                    let pc = self.pc as u16;
+                    self.push_on_stack(memory, (pc >> 8) as u8);
+                    self.push_on_stack(memory, (pc & 0xFF) as u8);
+                    let mut status = self.get_status_flag();
+                    status |= 0b0011_0000;
+                    self.push_on_stack(memory, status);
+                    self.i = 1;
+                    self.pc = self.read_word(memory, 0xFFFE) as usize;
+                    cycle -= 7;
+                },
+                Self::NOP_IMPLIED => {
+                    cycle -= 2;
+                },
+                Self::RTI_IMPLIED => {
+                    let status = self.pop_from_stack(memory);
+                    self.set_status_flag(status);
+                    let pc_low = self.pop_from_stack(memory) as u16;
+                    let pc_high = self.pop_from_stack(memory) as u16;
+                    self.pc = ((pc_high << 8) | pc_low) as usize;
+                    cycle -= 6;
                 },
                 _ => {
                     println!("Error, instruction {} not recognized", instruction);

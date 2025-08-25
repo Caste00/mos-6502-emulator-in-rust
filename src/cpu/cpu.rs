@@ -67,6 +67,11 @@ impl Cpu {
     pub const ASL_ZERO_PAGE_X: u8 = 0x16;
     pub const ASL_ABSOLUTE: u8 = 0x0E;
     pub const ASL_ABSOLUTE_X: u8 = 0x1E;
+    pub const LSR_ACCUMULATOR: u8 = 0x4A;
+    pub const LSR_ZERO_PAGE: u8 = 0x46;
+    pub const LSR_ZERO_PAGE_X: u8 = 0x56;
+    pub const LSR_ABSOLUTE: u8 = 0x4E;
+    pub const LSR_ABSOLUTE_X: u8 = 0x5E;
     pub const AND_IMMEDIATE: u8 = 0x29;
     pub const AND_ZERO_PAGE: u8 = 0x25;
     pub const AND_ZERO_PAGE_X: u8 = 0x35;
@@ -249,6 +254,12 @@ impl Cpu {
         self.c = ((original & 0b1000_0000) != 0) as u8;
         self.z = (self.a == 0) as u8;
         self.n = ((result & 0b1000_0000) > 0) as u8;
+    }
+
+    fn lsr_set_status(&mut self, original: u8, result: u8) {
+        self.c = (original & 0x01) as u8;
+        self.z = (result == 0) as u8;
+        self.n = 0;
     }
 
     fn end_or_set_status(&mut self) {
@@ -559,6 +570,40 @@ impl Cpu {
                     let original = memory.data[address];
                     memory.data[address] = memory.data[address].wrapping_shl(1);
                     self.asl_set_status(original, memory.data[address]);
+                    cycle -= 7;
+                },
+                Self::LSR_ACCUMULATOR => {
+                    let original = self.a;
+                    self.a = self.a.wrapping_shr(1);
+                    self.lsr_set_status(original, self.a);
+                    cycle -= 2;
+                },
+                Self::LSR_ZERO_PAGE => {
+                    let address = self.fetch_byte(memory) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shr(1);
+                    self.lsr_set_status(original, memory.data[address]);
+                    cycle -= 5;
+                },
+                Self::LSR_ZERO_PAGE_X => {
+                    let address = self.fetch_byte(memory).wrapping_add(self.x) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shr(1);
+                    self.lsr_set_status(original, memory.data[address]);
+                    cycle -= 6;
+                },
+                Self::LSR_ABSOLUTE => {
+                    let address = self.fetch_word(memory) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shr(1);
+                    self.lsr_set_status(original, memory.data[address]);
+                    cycle -= 6;
+                },
+                Self::LSR_ABSOLUTE_X => {
+                    let address = self.fetch_word(memory).wrapping_add(self.x as u16) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shr(1);
+                    self.lsr_set_status(original, memory.data[address]);
                     cycle -= 7;
                 },
                 Self::AND_IMMEDIATE => {

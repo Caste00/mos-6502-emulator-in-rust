@@ -150,6 +150,16 @@ impl Cpu {
     pub const BRK_IMPLIED: u8 = 0x00;
     pub const NOP_IMPLIED: u8 = 0xEA;
     pub const RTI_IMPLIED: u8 = 0x40;
+    pub const ROL_ACCUMULATOR: u8 = 0x2A;
+    pub const ROL_ZERO_PAGE: u8 = 0x26;
+    pub const ROL_ZERO_PAGE_X: u8 = 0x36;
+    pub const ROL_ABSOLUTE: u8 = 0x2E;
+    pub const ROL_ABSOLUTE_X: u8 = 0x3E;
+    pub const ROR_ACCUMULATOR: u8 = 0x6A;
+    pub const ROR_ZERO_PAGE: u8 = 0x66;
+    pub const ROR_ZERO_PAGE_X: u8 = 0x76;
+    pub const ROR_ABSOLUTE: u8 = 0x6E;
+    pub const ROR_ABSOLUTE_X: u8 = 0x7E;
 
     pub fn new() -> Self {
         Self {
@@ -237,29 +247,41 @@ impl Cpu {
 
     fn z_n_register_a_set_status(&mut self) {
         self.z = (self.a == 0) as u8;
-        self.n = ((self.a & 0b1000_0000) > 0) as u8;
+        self.n = ((self.a & 0x80) > 0) as u8;
     }
 
     fn z_n_register_x_set_status(&mut self) {
         self.z = (self.x == 0) as u8;
-        self.n = ((self.x & 0b1000_0000) > 0) as u8;
+        self.n = ((self.x & 0x80) > 0) as u8;
     }
 
     fn z_n_register_y_set_status(&mut self) {
         self.z = (self.y == 0) as u8;
-        self.n = ((self.y & 0b1000_0000) > 0) as u8;
+        self.n = ((self.y & 0x80) > 0) as u8;
     }
 
     fn asl_set_status(&mut self, original: u8, result: u8) {
-        self.c = ((original & 0b1000_0000) != 0) as u8;
+        self.c = ((original & 0x80) != 0) as u8;
         self.z = (self.a == 0) as u8;
-        self.n = ((result & 0b1000_0000) > 0) as u8;
+        self.n = ((result & 0x80) > 0) as u8;
     }
 
     fn lsr_set_status(&mut self, original: u8, result: u8) {
         self.c = (original & 0x01) as u8;
         self.z = (result == 0) as u8;
         self.n = 0;
+    }
+
+    fn rol_set_status(& mut self, original: u8, result: u8) {
+        self.c = ((original & 0x80) >> 7) as u8;
+        self.z = (result == 0) as u8;
+        self.n = ((result & 0x80) != 0) as u8;
+    }
+
+    fn ror_set_status(&mut self, original: u8, result: u8) {
+        self.c = (original & 0x01) as u8;
+        self.z = (result == 0) as u8;
+        self.n = ((result & 0x80) != 0) as u8;
     }
 
     fn end_or_set_status(&mut self) {
@@ -1227,6 +1249,74 @@ impl Cpu {
                     let pc_high = self.pop_from_stack(memory) as u16;
                     self.pc = ((pc_high << 8) | pc_low) as usize;
                     cycle -= 6;
+                },
+                Self::ROL_ACCUMULATOR => {
+                    let original = self.a;
+                    self.a = original.wrapping_shl(1) | self.c;
+                    self.rol_set_status(original, self.a);
+                    cycle -= 2;
+                },
+                Self::ROL_ZERO_PAGE => {
+                    let address = self.fetch_byte(memory) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shl(1) | self.c;
+                    self.rol_set_status(original, memory.data[address]);
+                    cycle -= 5;
+                },
+                Self::ROL_ZERO_PAGE_X => {
+                    let address = self.fetch_byte(memory).wrapping_add(self.x) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shl(1) | self.c;
+                    self.rol_set_status(original, memory.data[address]);
+                    cycle -= 6;
+                },
+                Self::ROL_ABSOLUTE => {
+                    let address = self.fetch_word(memory) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shl(1) | self.c;
+                    self.rol_set_status(original, memory.data[address]);
+                    cycle -= 6;
+                },
+                Self::ROL_ABSOLUTE_X => {
+                    let address = self.fetch_word(memory).wrapping_add(self.x as u16) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shl(1) | self.c;
+                    self.rol_set_status(original, memory.data[address]);
+                    cycle -= 7;
+                },
+                Self::ROR_ACCUMULATOR => {
+                    let original = self.a;
+                    self.a = original.wrapping_shr(1) | (self.c << 7);
+                    self.ror_set_status(original, self.a);
+                    cycle -= 2;
+                },
+                Self::ROR_ZERO_PAGE => {
+                    let address = self.fetch_byte(memory) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shr(1) | (self.c << 7);
+                    self.ror_set_status(original, memory.data[address]);
+                    cycle -= 5;
+                },
+                Self::ROR_ZERO_PAGE_X => {
+                    let address = self.fetch_byte(memory).wrapping_add(self.x) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shr(1) | (self.c << 7);
+                    self.ror_set_status(original, memory.data[address]);
+                    cycle -= 6;
+                },
+                Self::ROR_ABSOLUTE => {
+                    let address = self.fetch_word(memory) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shr(1) | (self.c << 7);
+                    self.ror_set_status(original, memory.data[address]);
+                    cycle -= 6;
+                },
+                Self::ROR_ABSOLUTE_X => {
+                    let address = self.fetch_word(memory).wrapping_add(self.x as u16) as usize;
+                    let original = memory.data[address];
+                    memory.data[address] = memory.data[address].wrapping_shr(1) | (self.c << 7);
+                    self.ror_set_status(original, memory.data[address]);
+                    cycle -= 7;
                 },
                 _ => {
                     println!("Error, instruction {} not recognized", instruction);

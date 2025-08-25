@@ -7,11 +7,11 @@ fn main() {
     let mut cpu = Cpu::new();
     
     cpu.reset();
-    cpu.a = 48;
-    mem.data[0xFFFC] = Cpu::CMP_IMMEDIATE;
-    mem.data[0xFFFD] = 0x19;
-    mem.data[0x0019] = 48;
+    cpu.a = 0b1000_0001;
+    cpu.c = 1;
+
+    mem.data[0xFFFC] = Cpu::ROL_ACCUMULATOR;
     cpu.execute(2, &mut mem);
 
-    println!("{}", mem.data[0x0019]);
+    println!("{}", cpu.a);
 }
